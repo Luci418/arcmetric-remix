@@ -47,6 +47,18 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        status: {
+          ok: "hsl(var(--status-ok))",
+          warning: "hsl(var(--status-warning))",
+          critical: "hsl(var(--status-critical))",
+          idle: "hsl(var(--status-idle))",
+        },
+        metric: {
+          current: "hsl(var(--metric-current))",
+          voltage: "hsl(var(--metric-voltage))",
+          gasflow: "hsl(var(--metric-gasflow))",
+          wirefeed: "hsl(var(--metric-wirefeed))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
