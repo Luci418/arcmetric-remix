@@ -14,9 +14,10 @@ const METRIC_KEYS = ['current', 'voltage', 'gasflow', 'wirefeed'] as const;
 const Index = () => {
   const [dataSource, setDataSource] = useState<DataSource>('simulated');
   const [activeChart, setActiveChart] = useState<typeof METRIC_KEYS[number]>('current');
+  const [selectedMachine, setSelectedMachine] = useState('ESP32-WM-001');
 
   const simulated = useSimulatedData();
-  const aws = useAWSData();
+  const aws = useAWSData(selectedMachine);
 
   const source = dataSource === 'aws' ? aws : simulated;
   const { latestPoint, history, alerts, sessions, acknowledgeAlert } = source;
@@ -30,17 +31,17 @@ const Index = () => {
         onDataSourceChange={setDataSource}
         awsConnected={aws.connected}
         awsError={aws.error}
+        selectedMachine={selectedMachine}
+        onMachineChange={setSelectedMachine}
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6">
-        {/* Metric cards */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {METRIC_KEYS.map((key) => (
             <MetricCard key={key} metricKey={key} value={latestPoint[key]} />
           ))}
         </div>
 
-        {/* Chart + side panels */}
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <Tabs value={activeChart} onValueChange={(v) => setActiveChart(v as typeof METRIC_KEYS[number])}>
@@ -60,7 +61,6 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Sessions table */}
         <WeldSessionTable sessions={sessions} />
       </main>
     </div>

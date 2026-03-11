@@ -1,7 +1,15 @@
-import { Activity, Bell, Wifi, WifiOff, Cloud } from 'lucide-react';
+import { Activity, Bell, Wifi, WifiOff, Cloud, MonitorSpeaker } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { AVAILABLE_MACHINES } from '@/hooks/useAWSData';
 
 export type DataSource = 'simulated' | 'aws';
 
@@ -11,6 +19,8 @@ interface DashboardHeaderProps {
   onDataSourceChange: (source: DataSource) => void;
   awsConnected?: boolean;
   awsError?: string | null;
+  selectedMachine: string;
+  onMachineChange: (machineId: string) => void;
 }
 
 export function DashboardHeader({
@@ -19,6 +29,8 @@ export function DashboardHeader({
   onDataSourceChange,
   awsConnected,
   awsError,
+  selectedMachine,
+  onMachineChange,
 }: DashboardHeaderProps) {
   const isAWS = dataSource === 'aws';
 
@@ -34,16 +46,33 @@ export function DashboardHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
+        {/* Machine selector */}
+        <div className="flex items-center gap-2">
+          <MonitorSpeaker className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedMachine} onValueChange={onMachineChange}>
+            <SelectTrigger className="h-8 w-[160px] text-xs">
+              <SelectValue placeholder="Select machine" />
+            </SelectTrigger>
+            <SelectContent>
+              {AVAILABLE_MACHINES.map((id) => (
+                <SelectItem key={id} value={id} className="text-xs font-mono">
+                  {id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Data source toggle */}
         <div className="flex items-center gap-2">
           <Label htmlFor="data-source" className="text-xs text-muted-foreground">
             {isAWS ? (
               <span className="flex items-center gap-1">
-                <Cloud className="h-3.5 w-3.5" /> AWS Live
+                <Cloud className="h-3.5 w-3.5" /> AWS
               </span>
             ) : (
-              'Simulated'
+              'Sim'
             )}
           </Label>
           <Switch
@@ -62,7 +91,7 @@ export function DashboardHeader({
               <>
                 <Wifi className="h-4 w-4 status-ok" />
                 <Badge variant="outline" className="border-status-ok/30 bg-status-ok/5 text-xs status-ok">
-                  AWS Connected
+                  Connected
                 </Badge>
               </>
             ) : (
@@ -76,7 +105,6 @@ export function DashboardHeader({
           ) : (
             <>
               <Wifi className="h-4 w-4 status-ok" />
-              <span className="font-mono-data text-xs">Simulated</span>
               <Badge variant="outline" className="border-status-ok/30 bg-status-ok/5 text-xs status-ok">
                 Active
               </Badge>
