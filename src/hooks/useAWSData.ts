@@ -2,10 +2,27 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { WeldDataPoint, WeldAlert, WeldSession, WPS_SPECS, getMetricStatus } from '@/lib/weldTypes';
 
 const API_BASE = 'https://a39km4t04h.execute-api.us-east-1.amazonaws.com';
-const POLL_INTERVAL = 2000;
+const POLL_INTERVAL = 3000;
 const HISTORY_LENGTH = 60;
 
-export function useAWSData() {
+// Available ESP32 machines (seeded from Kaggle folders)
+export const AVAILABLE_MACHINES = [
+  'ESP32-WM-001',
+  'ESP32-WM-002',
+  'ESP32-WM-003',
+  'ESP32-WM-004',
+  'ESP32-WM-005',
+  'ESP32-WM-006',
+  'ESP32-WM-007',
+  'ESP32-WM-008',
+  'ESP32-WM-009',
+  'ESP32-WM-010',
+  'ESP32-WM-011',
+  'ESP32-WM-012',
+  'ESP32-WM-013',
+];
+
+export function useAWSData(machineId: string = 'ESP32-WM-010') {
   const [history, setHistory] = useState<WeldDataPoint[]>([]);
   const [alerts, setAlerts] = useState<WeldAlert[]>([]);
   const [sessions, setSessions] = useState<WeldSession[]>([]);
@@ -48,16 +65,22 @@ export function useAWSData() {
     }
   }, []);
 
-  // Fetch weld data points
+  // Reset state when machine changes
+  useEffect(() => {
+    setHistory([]);
+    setAlerts([]);
+    setConnected(false);
+    setError(null);
+  }, [machineId]);
+
+  // Fetch weld data points — no time filter for seeded historical data
   useEffect(() => {
     let active = true;
 
     const fetchData = async () => {
       try {
-        const now = Date.now();
-        const from = now - HISTORY_LENGTH * 1000;
         const res = await fetch(
-          `${API_BASE}/weld-data?machineId=ESP32-WM-010&from=${from}&to=${now}&limit=${HISTORY_LENGTH}`
+          `${API_BASE}/weld-data?machineId=${encodeURIComponent(machineId)}&limit=${HISTORY_LENGTH}`
         );
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -85,6 +108,9 @@ export function useAWSData() {
           checkAlerts(points[points.length - 1]);
           setConnected(true);
           setError(null);
+        } else {
+          setConnected(true);
+          setError('No data for this machine');
         }
       } catch (err) {
         if (!active) return;
@@ -100,7 +126,7 @@ export function useAWSData() {
       active = false;
       clearInterval(interval);
     };
-  }, [checkAlerts]);
+  }, [machineId, checkAlerts]);
 
   // Fetch sessions once
   useEffect(() => {
@@ -124,7 +150,7 @@ export function useAWSData() {
         }));
         setSessions(mapped);
       } catch {
-        // silently fail, sessions are secondary
+        // silently fail
       }
     };
     fetchSessions();
