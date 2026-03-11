@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSimulatedData } from '@/hooks/useSimulatedData';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { useAWSData } from '@/hooks/useAWSData';
+import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
@@ -11,13 +12,25 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 const METRIC_KEYS = ['current', 'voltage', 'gasflow', 'wirefeed'] as const;
 
 const Index = () => {
-  const { latestPoint, history, alerts, sessions, acknowledgeAlert } = useSimulatedData();
+  const [dataSource, setDataSource] = useState<DataSource>('simulated');
   const [activeChart, setActiveChart] = useState<typeof METRIC_KEYS[number]>('current');
+
+  const simulated = useSimulatedData();
+  const aws = useAWSData();
+
+  const source = dataSource === 'aws' ? aws : simulated;
+  const { latestPoint, history, alerts, sessions, acknowledgeAlert } = source;
   const unacknowledgedCount = alerts.filter((a) => !a.acknowledged).length;
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader activeAlerts={unacknowledgedCount} />
+      <DashboardHeader
+        activeAlerts={unacknowledgedCount}
+        dataSource={dataSource}
+        onDataSourceChange={setDataSource}
+        awsConnected={aws.connected}
+        awsError={aws.error}
+      />
 
       <main className="mx-auto max-w-7xl px-6 py-6">
         {/* Metric cards */}
