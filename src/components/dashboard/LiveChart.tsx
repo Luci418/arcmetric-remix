@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { WeldDataPoint, WPS_SPECS } from '@/lib/weldTypes';
+import { WeldDataPoint, WPSSpecSet, TimeRange, TIME_RANGE_CONFIG } from '@/lib/weldTypes';
 
 interface LiveChartProps {
   data: WeldDataPoint[];
   activeMetric: 'current' | 'voltage' | 'gasflow' | 'wirefeed';
+  specs: WPSSpecSet;
+  timeRange: TimeRange;
 }
 
 const METRIC_COLORS: Record<string, string> = {
@@ -14,30 +16,46 @@ const METRIC_COLORS: Record<string, string> = {
   wirefeed: 'hsl(38, 92%, 50%)',
 };
 
-export function LiveChart({ data, activeMetric }: LiveChartProps) {
-  const spec = WPS_SPECS[activeMetric];
+export function LiveChart({ data, activeMetric, specs, timeRange }: LiveChartProps) {
+  const spec = specs[activeMetric];
   const color = METRIC_COLORS[activeMetric];
+
+  const isLongRange = timeRange === '1h' || timeRange === '6h' || timeRange === 'custom';
 
   const chartData = useMemo(
     () =>
       data.map((d) => ({
-        time: new Date(d.timestamp).toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' }),
+        time: new Date(d.timestamp).toLocaleTimeString('en-US', {
+          hour12: false,
+          ...(isLongRange
+            ? { hour: '2-digit' as const, minute: '2-digit' as const }
+            : { minute: '2-digit' as const, second: '2-digit' as const }),
+        }),
         value: d[activeMetric],
       })),
-    [data, activeMetric]
+    [data, activeMetric, isLongRange]
   );
+
+  const rangeLabel = timeRange === 'custom'
+    ? 'Custom range'
+    : timeRange === 'live'
+      ? 'Last 60 seconds · Live'
+      : `Last ${TIME_RANGE_CONFIG[timeRange].label}`;
+
+  // Dynamic tick interval based on data points
+  const tickInterval = Math.max(1, Math.floor(chartData.length / 8));
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-foreground">{spec.label} Trend</h3>
-          <p className="text-xs text-muted-foreground">Last 60 seconds · Live</p>
+          <p className="text-xs text-muted-foreground">{rangeLabel}</p>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-            Live
+            {timeRange === 'live' ? 'Live' : 'Data'}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block h-2 w-6 rounded-full bg-status-ok opacity-30" />
@@ -52,7 +70,7 @@ export function LiveChart({ data, activeMetric }: LiveChartProps) {
           <XAxis
             dataKey="time"
             tick={{ fontSize: 10, fill: 'hsl(220, 10%, 50%)' }}
-            interval={9}
+            interval={tickInterval}
           />
           <YAxis
             domain={[spec.min, spec.max]}
