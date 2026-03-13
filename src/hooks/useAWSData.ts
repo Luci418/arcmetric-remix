@@ -162,5 +162,9 @@ export function useAWSData(machineId: string = 'ESP32-WM-010') {
     );
   }, []);
 
-  return { latestPoint, history, alerts, sessions, acknowledgeAlert, connected, error };
+  const addSession = useCallback((session: WeldSession) => {
+    setSessions((prev) => [session, ...prev]);
+  }, []);
+
+  return { latestPoint, history, alerts, sessions, acknowledgeAlert, addSession, connected, error };
 }
