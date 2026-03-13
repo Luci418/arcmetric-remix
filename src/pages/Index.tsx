@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useAWSData } from '@/hooks/useAWSData';
+import { useMachines } from '@/hooks/useMachines';
 import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { LiveChart } from '@/components/dashboard/LiveChart';
@@ -13,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   WPSSpecSet,
   WPS_SPECS,
+  WeldSession,
   TimeRange,
   TIME_RANGE_CONFIG,
   MetricKey,
@@ -30,16 +32,26 @@ const Index = () => {
   const [activeSpecs, setActiveSpecs] = useState<WPSSpecSet>(WPS_SPECS);
   const [activePresetId, setActivePresetId] = useState('gmaw-mild-steel');
 
+  const { machines, addMachine, removeMachine, retireMachine, reactivateMachine } = useMachines();
   const simulated = useSimulatedData();
   const aws = useAWSData(selectedMachine);
 
   const source = dataSource === 'aws' ? aws : simulated;
-  const { latestPoint, history, alerts, sessions, acknowledgeAlert } = source;
+  const { latestPoint, history, alerts, acknowledgeAlert } = source;
+
+  // Merge sessions from source + operator-created
+  const sessions = source.sessions;
   const unacknowledgedCount = alerts.filter((a) => !a.acknowledged).length;
+
+  const handleCreateSession = (session: WeldSession) => {
+    if ('addSession' in source) {
+      (source as any).addSession(session);
+    }
+  };
 
   // Filter history based on time range
   const filteredHistory = useMemo(() => {
-    if (timeRange === 'live') return history;
+    if (timeRange === 'live') return history.slice(-60);
 
     const now = Date.now();
     if (timeRange === 'custom' && customStart && customEnd) {
@@ -73,6 +85,11 @@ const Index = () => {
         awsError={aws.error}
         selectedMachine={selectedMachine}
         onMachineChange={setSelectedMachine}
+        machines={machines}
+        onAddMachine={addMachine}
+        onRemoveMachine={removeMachine}
+        onRetireMachine={retireMachine}
+        onReactivateMachine={reactivateMachine}
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6">
@@ -126,7 +143,11 @@ const Index = () => {
           </div>
         </div>
 
-        <WeldSessionTable sessions={sessions} />
+        <WeldSessionTable
+          sessions={sessions}
+          machines={machines}
+          onCreateSession={handleCreateSession}
+        />
       </main>
     </div>
   );
