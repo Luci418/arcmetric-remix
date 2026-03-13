@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WeldDataPoint, WeldAlert, WeldSession, WPS_SPECS, getMetricStatus } from '@/lib/weldTypes';
 
-const HISTORY_LENGTH = 60;
+const HISTORY_LENGTH = 3600; // 1 hour of data at 1s intervals
 const UPDATE_INTERVAL = 1000;
 
 function randomWalk(current: number, min: number, max: number, volatility: number = 0.02): number {
