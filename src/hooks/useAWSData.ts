@@ -3,7 +3,7 @@ import { WeldDataPoint, WeldAlert, WeldSession, WPS_SPECS, getMetricStatus } fro
 
 const API_BASE = 'https://a39km4t04h.execute-api.us-east-1.amazonaws.com';
 const POLL_INTERVAL = 3000;
-const HISTORY_LENGTH = 60;
+const HISTORY_LENGTH = 3600;
 
 // Available ESP32 machines (seeded from Kaggle folders)
 export const AVAILABLE_MACHINES = [
@@ -162,5 +162,9 @@ export function useAWSData(machineId: string = 'ESP32-WM-010') {
     );
   }, []);
 
-  return { latestPoint, history, alerts, sessions, acknowledgeAlert, connected, error };
+  const addSession = useCallback((session: WeldSession) => {
+    setSessions((prev) => [session, ...prev]);
+  }, []);
+
+  return { latestPoint, history, alerts, sessions, acknowledgeAlert, addSession, connected, error };
 }

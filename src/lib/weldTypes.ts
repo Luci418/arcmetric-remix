@@ -176,3 +176,10 @@ export const TIME_RANGE_CONFIG: Record<Exclude<TimeRange, 'custom'>, { label: st
   '1h': { label: '1 hour', seconds: 3600 },
   '6h': { label: '6 hours', seconds: 21600 },
 };
+
+export interface Machine {
+  id: string;
+  name: string;
+  status: 'active' | 'retired';
+  addedAt: Date;
+}

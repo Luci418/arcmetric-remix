@@ -9,7 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AVAILABLE_MACHINES } from '@/hooks/useAWSData';
+import { MachineManagementDialog } from './MachineManagementDialog';
+import { Machine } from '@/lib/weldTypes';
 
 export type DataSource = 'simulated' | 'aws';
 
@@ -21,6 +22,11 @@ interface DashboardHeaderProps {
   awsError?: string | null;
   selectedMachine: string;
   onMachineChange: (machineId: string) => void;
+  machines: Machine[];
+  onAddMachine: (id: string, name: string) => void;
+  onRemoveMachine: (id: string) => void;
+  onRetireMachine: (id: string) => void;
+  onReactivateMachine: (id: string) => void;
 }
 
 export function DashboardHeader({
@@ -31,11 +37,17 @@ export function DashboardHeader({
   awsError,
   selectedMachine,
   onMachineChange,
+  machines,
+  onAddMachine,
+  onRemoveMachine,
+  onRetireMachine,
+  onReactivateMachine,
 }: DashboardHeaderProps) {
   const isAWS = dataSource === 'aws';
+  const activeMachines = machines.filter((m) => m.status === 'active');
 
   return (
-    <header className="flex items-center justify-between border-b border-border bg-card px-6 py-4">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-6 py-4">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
           <Activity className="h-5 w-5 text-primary-foreground" />
@@ -46,23 +58,33 @@ export function DashboardHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Machine selector */}
         <div className="flex items-center gap-2">
           <MonitorSpeaker className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedMachine} onValueChange={onMachineChange}>
-            <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectTrigger className="h-8 w-[180px] text-xs">
               <SelectValue placeholder="Select machine" />
             </SelectTrigger>
             <SelectContent>
-              {AVAILABLE_MACHINES.map((id) => (
-                <SelectItem key={id} value={id} className="text-xs font-mono">
-                  {id}
+              {activeMachines.map((m) => (
+                <SelectItem key={m.id} value={m.id} className="text-xs">
+                  <span className="font-mono-data">{m.id}</span>
+                  <span className="ml-1.5 text-muted-foreground">— {m.name}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Machine management */}
+        <MachineManagementDialog
+          machines={machines}
+          onAdd={onAddMachine}
+          onRemove={onRemoveMachine}
+          onRetire={onRetireMachine}
+          onReactivate={onReactivateMachine}
+        />
 
         {/* Data source toggle */}
         <div className="flex items-center gap-2">

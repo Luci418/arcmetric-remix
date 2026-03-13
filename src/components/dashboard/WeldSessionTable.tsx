@@ -1,9 +1,12 @@
-import { WeldSession } from '@/lib/weldTypes';
+import { WeldSession, Machine } from '@/lib/weldTypes';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { CreateSessionDialog } from './CreateSessionDialog';
 
 interface WeldSessionTableProps {
   sessions: WeldSession[];
+  machines: Machine[];
+  onCreateSession: (session: WeldSession) => void;
 }
 
 const statusStyles: Record<string, string> = {
@@ -12,12 +15,15 @@ const statusStyles: Record<string, string> = {
   failed: 'bg-status-critical\/10 status-critical border-transparent',
 };
 
-export function WeldSessionTable({ sessions }: WeldSessionTableProps) {
+export function WeldSessionTable({ sessions, machines, onCreateSession }: WeldSessionTableProps) {
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
-      <div className="border-b border-border px-5 py-3">
-        <h3 className="text-sm font-semibold text-foreground">Weld Sessions</h3>
-        <p className="text-xs text-muted-foreground">Recent welding activity log</p>
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Weld Sessions</h3>
+          <p className="text-xs text-muted-foreground">Operator-defined welding activity log</p>
+        </div>
+        <CreateSessionDialog machines={machines} onCreateSession={onCreateSession} />
       </div>
 
       <div className="overflow-x-auto">
@@ -34,34 +40,42 @@ export function WeldSessionTable({ sessions }: WeldSessionTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {sessions.map((session) => (
-              <tr key={session.id} className="transition-colors hover:bg-muted/50">
-                <td className="px-5 py-3 font-mono-data text-xs font-medium text-foreground">{session.id}</td>
-                <td className="px-5 py-3 text-foreground">{session.operator}</td>
-                <td className="px-5 py-3 font-mono-data text-xs text-muted-foreground">{session.machineId}</td>
-                <td className="px-5 py-3 font-mono-data text-xs text-muted-foreground">{session.wpsRef}</td>
-                <td className="px-5 py-3 font-mono-data text-xs text-foreground">{session.avgCurrent}A</td>
-                <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={cn(
-                          'h-full rounded-full transition-all',
-                          session.qualityScore >= 80 ? 'bg-status-ok' : session.qualityScore >= 60 ? 'bg-status-warning' : 'bg-status-critical'
-                        )}
-                        style={{ width: `${session.qualityScore}%` }}
-                      />
-                    </div>
-                    <span className="font-mono-data text-xs text-muted-foreground">{session.qualityScore}%</span>
-                  </div>
-                </td>
-                <td className="px-5 py-3">
-                  <Badge variant="outline" className={cn('text-[11px] font-semibold capitalize', statusStyles[session.status])}>
-                    {session.status}
-                  </Badge>
+            {sessions.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                  No sessions yet. Click "New Session" to create one.
                 </td>
               </tr>
-            ))}
+            ) : (
+              sessions.map((session) => (
+                <tr key={session.id} className="transition-colors hover:bg-muted/50">
+                  <td className="px-5 py-3 font-mono-data text-xs font-medium text-foreground">{session.id}</td>
+                  <td className="px-5 py-3 text-foreground">{session.operator}</td>
+                  <td className="px-5 py-3 font-mono-data text-xs text-muted-foreground">{session.machineId}</td>
+                  <td className="px-5 py-3 font-mono-data text-xs text-muted-foreground">{session.wpsRef}</td>
+                  <td className="px-5 py-3 font-mono-data text-xs text-foreground">{session.avgCurrent}A</td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            session.qualityScore >= 80 ? 'bg-status-ok' : session.qualityScore >= 60 ? 'bg-status-warning' : 'bg-status-critical'
+                          )}
+                          style={{ width: `${session.qualityScore}%` }}
+                        />
+                      </div>
+                      <span className="font-mono-data text-xs text-muted-foreground">{session.qualityScore}%</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <Badge variant="outline" className={cn('text-[11px] font-semibold capitalize', statusStyles[session.status])}>
+                      {session.status}
+                    </Badge>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

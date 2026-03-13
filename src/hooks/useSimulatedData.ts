@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WeldDataPoint, WeldAlert, WeldSession, WPS_SPECS, getMetricStatus } from '@/lib/weldTypes';
 
-const HISTORY_LENGTH = 60;
+const HISTORY_LENGTH = 3600; // 1 hour of data at 1s intervals
 const UPDATE_INTERVAL = 1000;
+const INITIAL_POINTS = 300; // Generate 5 min of initial history (fast startup)
 
 function randomWalk(current: number, min: number, max: number, volatility: number = 0.02): number {
   const range = max - min;
@@ -15,7 +16,7 @@ function generateInitialHistory(): WeldDataPoint[] {
   let current = 210, voltage = 25, gasflow = 17, wirefeed = 9;
   const now = Date.now();
 
-  for (let i = HISTORY_LENGTH; i >= 0; i--) {
+  for (let i = INITIAL_POINTS; i >= 0; i--) {
     current = randomWalk(current, 140, 290, 0.03);
     voltage = randomWalk(voltage, 16, 34, 0.02);
     gasflow = randomWalk(gasflow, 10, 24, 0.015);
@@ -32,64 +33,10 @@ function generateInitialHistory(): WeldDataPoint[] {
   return points;
 }
 
-const MOCK_SESSIONS: WeldSession[] = [
-  {
-    id: 'WS-2026-0847',
-    operator: 'Mike Chen',
-    machineId: 'ESP32-WM-001',
-    wpsRef: 'WPS-GMAW-1012',
-    startTime: new Date(Date.now() - 45 * 60000),
-    status: 'active',
-    avgCurrent: 215,
-    avgVoltage: 24.8,
-    avgGasflow: 17.2,
-    qualityScore: 94,
-  },
-  {
-    id: 'WS-2026-0846',
-    operator: 'Sarah Kim',
-    machineId: 'ESP32-WM-003',
-    wpsRef: 'WPS-GMAW-1015',
-    startTime: new Date(Date.now() - 120 * 60000),
-    endTime: new Date(Date.now() - 85 * 60000),
-    status: 'completed',
-    avgCurrent: 198,
-    avgVoltage: 22.1,
-    avgGasflow: 16.8,
-    qualityScore: 97,
-  },
-  {
-    id: 'WS-2026-0845',
-    operator: 'James Patel',
-    machineId: 'ESP32-WM-002',
-    wpsRef: 'WPS-FCAW-2003',
-    startTime: new Date(Date.now() - 180 * 60000),
-    endTime: new Date(Date.now() - 155 * 60000),
-    status: 'failed',
-    avgCurrent: 305,
-    avgVoltage: 34.2,
-    avgGasflow: 11.5,
-    qualityScore: 42,
-  },
-  {
-    id: 'WS-2026-0844',
-    operator: 'Mike Chen',
-    machineId: 'ESP32-WM-001',
-    wpsRef: 'WPS-GMAW-1012',
-    startTime: new Date(Date.now() - 240 * 60000),
-    endTime: new Date(Date.now() - 200 * 60000),
-    status: 'completed',
-    avgCurrent: 220,
-    avgVoltage: 25.5,
-    avgGasflow: 18.0,
-    qualityScore: 91,
-  },
-];
-
 export function useSimulatedData() {
   const [history, setHistory] = useState<WeldDataPoint[]>(generateInitialHistory);
   const [alerts, setAlerts] = useState<WeldAlert[]>([]);
-  const [sessions] = useState<WeldSession[]>(MOCK_SESSIONS);
+  const [sessions, setSessions] = useState<WeldSession[]>([]);
   const alertIdCounter = useRef(0);
 
   const latestPoint = history[history.length - 1];
@@ -150,5 +97,9 @@ export function useSimulatedData() {
     );
   }, []);
 
-  return { latestPoint, history, alerts, sessions, acknowledgeAlert };
+  const addSession = useCallback((session: WeldSession) => {
+    setSessions((prev) => [session, ...prev]);
+  }, []);
+
+  return { latestPoint, history, alerts, sessions, acknowledgeAlert, addSession };
 }
