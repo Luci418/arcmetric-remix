@@ -1,21 +1,28 @@
 import { WeldSession, Machine } from '@/lib/weldTypes';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CreateSessionDialog } from './CreateSessionDialog';
 
 interface WeldSessionTableProps {
   sessions: WeldSession[];
   machines: Machine[];
-  onCreateSession: (session: WeldSession) => void;
+  onCreateSession: (session: WeldSession) => Promise<boolean> | boolean | void;
+  onUpdateSessionStatus: (sessionId: string, status: WeldSession['status']) => Promise<boolean> | boolean | void;
 }
 
 const statusStyles: Record<string, string> = {
-  active: 'bg-status-ok\/10 status-ok border-transparent',
+  active: 'bg-status-ok/10 status-ok border-transparent',
   completed: 'bg-muted text-muted-foreground border-transparent',
-  failed: 'bg-status-critical\/10 status-critical border-transparent',
+  failed: 'bg-status-critical/10 status-critical border-transparent',
 };
 
-export function WeldSessionTable({ sessions, machines, onCreateSession }: WeldSessionTableProps) {
+export function WeldSessionTable({
+  sessions,
+  machines,
+  onCreateSession,
+  onUpdateSessionStatus,
+}: WeldSessionTableProps) {
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
@@ -37,12 +44,13 @@ export function WeldSessionTable({ sessions, machines, onCreateSession }: WeldSe
               <th className="px-5 py-2.5 font-medium">Avg Current</th>
               <th className="px-5 py-2.5 font-medium">Quality</th>
               <th className="px-5 py-2.5 font-medium">Status</th>
+              <th className="px-5 py-2.5 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {sessions.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                <td colSpan={8} className="px-5 py-8 text-center text-sm text-muted-foreground">
                   No sessions yet. Click "New Session" to create one.
                 </td>
               </tr>
@@ -60,7 +68,11 @@ export function WeldSessionTable({ sessions, machines, onCreateSession }: WeldSe
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
-                            session.qualityScore >= 80 ? 'bg-status-ok' : session.qualityScore >= 60 ? 'bg-status-warning' : 'bg-status-critical'
+                            session.qualityScore >= 80
+                              ? 'bg-status-ok'
+                              : session.qualityScore >= 60
+                                ? 'bg-status-warning'
+                                : 'bg-status-critical'
                           )}
                           style={{ width: `${session.qualityScore}%` }}
                         />
@@ -72,6 +84,30 @@ export function WeldSessionTable({ sessions, machines, onCreateSession }: WeldSe
                     <Badge variant="outline" className={cn('text-[11px] font-semibold capitalize', statusStyles[session.status])}>
                       {session.status}
                     </Badge>
+                  </td>
+                  <td className="px-5 py-3">
+                    {session.status === 'active' ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px] text-status-ok"
+                          onClick={() => onUpdateSessionStatus(session.id, 'completed')}
+                        >
+                          Complete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px] text-status-critical"
+                          onClick={() => onUpdateSessionStatus(session.id, 'failed')}
+                        >
+                          Fail
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">—</span>
+                    )}
                   </td>
                 </tr>
               ))
