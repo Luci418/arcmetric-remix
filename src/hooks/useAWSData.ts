@@ -361,7 +361,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
         addedAt: Date.now(),
       };
 
-      const created = await createMachineApi(payload).catch(() => payload);
+      const created = await createMachineApi(payload);
       const mapped = mapMachine((created ?? payload) as Record<string, any>);
 
       setMachines((prev) => [mapped, ...prev.filter((machine) => machine.id !== mapped.id)]);
