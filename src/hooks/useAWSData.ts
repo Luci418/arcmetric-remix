@@ -404,7 +404,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
   const reactivateMachine = useCallback(async (id: string) => {
     try {
       const payload = { status: 'active' as const };
-      await updateMachineApi(id, payload).catch(() => null);
+      await updateMachineApi(id, payload);
 
       setMachines((prev) =>
         prev.map((machine) => (machine.id === id ? { ...machine, status: 'active' as const } : machine))
