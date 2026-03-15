@@ -1,7 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useAWSData } from '@/hooks/useAWSData';
-import { useMachines } from '@/hooks/useMachines';
 import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { LiveChart } from '@/components/dashboard/LiveChart';
@@ -23,7 +22,7 @@ import {
 const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
 
 const Index = () => {
-  const [dataSource, setDataSource] = useState<DataSource>('simulated');
+  const [dataSource, setDataSource] = useState<DataSource>('aws');
   const [activeChart, setActiveChart] = useState<MetricKey>('current');
   const [selectedMachine, setSelectedMachine] = useState('ESP32-WM-001');
   const [timeRange, setTimeRange] = useState<TimeRange>('live');
@@ -32,38 +31,109 @@ const Index = () => {
   const [activeSpecs, setActiveSpecs] = useState<WPSSpecSet>(WPS_SPECS);
   const [activePresetId, setActivePresetId] = useState('gmaw-mild-steel');
 
-  const { machines, addMachine, removeMachine, retireMachine, reactivateMachine } = useMachines();
-  const simulated = useSimulatedData();
-  const aws = useAWSData(selectedMachine);
+  const aws = useAWSData(selectedMachine, activeSpecs);
+
+  const {
+    machines,
+    sessions: awsSessions,
+    addSession,
+    updateSessionStatus,
+    addMachine,
+    removeMachine,
+    retireMachine,
+    reactivateMachine,
+  } = aws;
+
+  useEffect(() => {
+    const activeMachines = machines.filter((machine) => machine.status === 'active');
+    if (activeMachines.length === 0) return;
+
+    const selectedStillActive = activeMachines.some((machine) => machine.id === selectedMachine);
+    if (!selectedStillActive) {
+      setSelectedMachine(activeMachines[0].id);
+    }
+  }, [machines, selectedMachine]);
+
+  const activeSessionForMachine = useMemo(
+    () =>
+      awsSessions
+        .filter((session) => session.machineId === selectedMachine && session.status === 'active')
+        .sort((a, b) => b.startTime.getTime() - a.startTime.getTime())[0],
+    [awsSessions, selectedMachine]
+  );
+
+  const simulated = useSimulatedData(activeSpecs, Boolean(activeSessionForMachine));
 
   const source = dataSource === 'aws' ? aws : simulated;
   const { latestPoint, history, alerts, acknowledgeAlert } = source;
 
-  // Merge sessions from source + operator-created
-  const sessions = source.sessions;
-  const unacknowledgedCount = alerts.filter((a) => !a.acknowledged).length;
+  const referenceTimestamp = history.length > 0 ? history[history.length - 1].timestamp : Date.now();
 
-  const handleCreateSession = (session: WeldSession) => {
-    if ('addSession' in source) {
-      (source as any).addSession(session);
-    }
-  };
+  const sessions = useMemo(() => {
+    return awsSessions
+      .map((session) => {
+        if (session.machineId !== selectedMachine) return session;
 
-  // Filter history based on time range
+        const startMs = session.startTime.getTime();
+        const endMs = session.endTime ? session.endTime.getTime() : referenceTimestamp;
+        const points = history.filter((point) => point.timestamp >= startMs && point.timestamp <= endMs);
+
+        if (points.length === 0) return session;
+
+        const avgCurrent = Number((points.reduce((sum, point) => sum + point.current, 0) / points.length).toFixed(1));
+        const avgVoltage = Number((points.reduce((sum, point) => sum + point.voltage, 0) / points.length).toFixed(1));
+        const avgGasflow = Number((points.reduce((sum, point) => sum + point.gasflow, 0) / points.length).toFixed(1));
+
+        const inSpecCount = points.reduce((count, point) => {
+          const inSpec = METRIC_KEYS.every((metricKey) => {
+            const spec = activeSpecs[metricKey];
+            if (spec.max === 0) return true;
+            const value = point[metricKey];
+            return value >= spec.wpsMin && value <= spec.wpsMax;
+          });
+
+          return count + (inSpec ? 1 : 0);
+        }, 0);
+
+        const qualityScore = Math.round((inSpecCount / points.length) * 100);
+
+        return {
+          ...session,
+          avgCurrent,
+          avgVoltage,
+          avgGasflow,
+          qualityScore,
+        };
+      })
+      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+  }, [awsSessions, selectedMachine, history, activeSpecs, referenceTimestamp]);
+
+  const unacknowledgedCount = alerts.filter((alert) => !alert.acknowledged).length;
+
+  const handleCreateSession = useCallback(
+    async (session: WeldSession) => {
+      const created = await addSession(session);
+      if (created) {
+        setSelectedMachine(session.machineId);
+      }
+      return created;
+    },
+    [addSession]
+  );
+
   const filteredHistory = useMemo(() => {
     if (timeRange === 'live') return history.slice(-60);
 
-    const now = Date.now();
     if (timeRange === 'custom' && customStart && customEnd) {
       const startMs = customStart.getTime();
       const endMs = customEnd.getTime();
-      return history.filter((p) => p.timestamp >= startMs && p.timestamp <= endMs);
+      return history.filter((point) => point.timestamp >= startMs && point.timestamp <= endMs);
     }
 
     const config = TIME_RANGE_CONFIG[timeRange];
-    const cutoff = now - config.seconds * 1000;
-    return history.filter((p) => p.timestamp >= cutoff);
-  }, [history, timeRange, customStart, customEnd]);
+    const cutoff = referenceTimestamp - config.seconds * 1000;
+    return history.filter((point) => point.timestamp >= cutoff && point.timestamp <= referenceTimestamp);
+  }, [history, timeRange, customStart, customEnd, referenceTimestamp]);
 
   const handleCustomRange = (start: Date, end: Date) => {
     setCustomStart(start);
@@ -102,7 +172,7 @@ const Index = () => {
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <Tabs value={activeChart} onValueChange={(v) => setActiveChart(v as MetricKey)}>
+              <Tabs value={activeChart} onValueChange={(value) => setActiveChart(value as MetricKey)}>
                 <TabsList>
                   <TabsTrigger value="current">Current</TabsTrigger>
                   <TabsTrigger value="voltage">Voltage</TabsTrigger>
@@ -134,11 +204,7 @@ const Index = () => {
           </div>
 
           <div className="flex flex-col gap-4">
-            <WPSCompliance
-              current={latestPoint}
-              specs={activeSpecs}
-              activePresetId={activePresetId}
-            />
+            <WPSCompliance current={latestPoint} specs={activeSpecs} activePresetId={activePresetId} />
             <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
           </div>
         </div>
@@ -147,6 +213,7 @@ const Index = () => {
           sessions={sessions}
           machines={machines}
           onCreateSession={handleCreateSession}
+          onUpdateSessionStatus={updateSessionStatus}
         />
       </main>
     </div>

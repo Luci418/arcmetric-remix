@@ -1,9 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WeldDataPoint, WeldAlert, WeldSession, WPS_SPECS, getMetricStatus } from '@/lib/weldTypes';
+import {
+  WeldDataPoint,
+  WeldAlert,
+  WeldSession,
+  WPSSpecSet,
+  MetricKey,
+  MetricStatus,
+  getMetricStatus,
+} from '@/lib/weldTypes';
 
-const HISTORY_LENGTH = 3600; // 1 hour of data at 1s intervals
+const HISTORY_LENGTH = 3600; // 1 hour at 1s intervals
 const UPDATE_INTERVAL = 1000;
-const INITIAL_POINTS = 300; // Generate 5 min of initial history (fast startup)
+const INITIAL_POINTS = 300; // 5 min warm history
+
+const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+
+const EMPTY_POINT: WeldDataPoint = {
+  timestamp: Date.now(),
+  current: 0,
+  voltage: 0,
+  gasflow: 0,
+  wirefeed: 0,
+};
 
 function randomWalk(current: number, min: number, max: number, volatility: number = 0.02): number {
   const range = max - min;
@@ -13,7 +31,10 @@ function randomWalk(current: number, min: number, max: number, volatility: numbe
 
 function generateInitialHistory(): WeldDataPoint[] {
   const points: WeldDataPoint[] = [];
-  let current = 210, voltage = 25, gasflow = 17, wirefeed = 9;
+  let current = 210;
+  let voltage = 25;
+  let gasflow = 17;
+  let wirefeed = 9;
   const now = Date.now();
 
   for (let i = INITIAL_POINTS; i >= 0; i--) {
@@ -30,76 +51,118 @@ function generateInitialHistory(): WeldDataPoint[] {
       wirefeed: Math.round(wirefeed * 10) / 10,
     });
   }
+
   return points;
 }
 
-export function useSimulatedData() {
-  const [history, setHistory] = useState<WeldDataPoint[]>(generateInitialHistory);
+function getDefaultStatuses(): Record<MetricKey, MetricStatus> {
+  return {
+    current: 'ok',
+    voltage: 'ok',
+    gasflow: 'ok',
+    wirefeed: 'ok',
+  };
+}
+
+export function useSimulatedData(specs: WPSSpecSet, hasActiveSession: boolean) {
+  const [history, setHistory] = useState<WeldDataPoint[]>(() => (hasActiveSession ? generateInitialHistory() : []));
   const [alerts, setAlerts] = useState<WeldAlert[]>([]);
-  const [sessions, setSessions] = useState<WeldSession[]>([]);
+  const [sessions] = useState<WeldSession[]>([]);
   const alertIdCounter = useRef(0);
+  const previousStatuses = useRef<Record<MetricKey, MetricStatus>>(getDefaultStatuses());
 
-  const latestPoint = history[history.length - 1];
+  const latestPoint = history.length > 0 ? history[history.length - 1] : EMPTY_POINT;
 
-  const checkAlerts = useCallback((point: WeldDataPoint) => {
-    const newAlerts: WeldAlert[] = [];
-    const specs = WPS_SPECS;
+  const checkAlerts = useCallback(
+    (point: WeldDataPoint) => {
+      const newAlerts: WeldAlert[] = [];
 
-    (Object.keys(specs) as Array<keyof typeof specs>).forEach((key) => {
-      const spec = specs[key];
-      const value = point[key];
-      const status = getMetricStatus(value, spec.wpsMin, spec.wpsMax);
+      METRIC_KEYS.forEach((key) => {
+        const spec = specs[key];
+        if (spec.max === 0) {
+          previousStatuses.current[key] = 'ok';
+          return;
+        }
 
-      if (status !== 'ok') {
-        alertIdCounter.current += 1;
-        newAlerts.push({
-          id: `alert-${alertIdCounter.current}`,
-          timestamp: new Date(point.timestamp),
-          severity: status,
-          metric: spec.label,
-          message: value > spec.wpsMax
-            ? `${spec.label} above WPS limit (${spec.wpsMax}${spec.unit})`
-            : `${spec.label} below WPS limit (${spec.wpsMin}${spec.unit})`,
-          value,
-          threshold: value > spec.wpsMax ? spec.wpsMax : spec.wpsMin,
-          acknowledged: false,
-        });
+        const value = point[key];
+        const status = getMetricStatus(value, spec.wpsMin, spec.wpsMax);
+        const previousStatus = previousStatuses.current[key];
+
+        if (status === 'ok') {
+          previousStatuses.current[key] = 'ok';
+          return;
+        }
+
+        if (previousStatus !== status) {
+          alertIdCounter.current += 1;
+          newAlerts.push({
+            id: `alert-${alertIdCounter.current}`,
+            timestamp: new Date(point.timestamp),
+            severity: status,
+            metric: spec.label,
+            message:
+              value > spec.wpsMax
+                ? `${spec.label} above WPS limit (${spec.wpsMax}${spec.unit})`
+                : `${spec.label} below WPS limit (${spec.wpsMin}${spec.unit})`,
+            value,
+            threshold: value > spec.wpsMax ? spec.wpsMax : spec.wpsMin,
+            acknowledged: false,
+          });
+        }
+
+        previousStatuses.current[key] = status;
+      });
+
+      if (newAlerts.length > 0) {
+        setAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
       }
-    });
-
-    if (newAlerts.length > 0) {
-      setAlerts((prev) => [...newAlerts, ...prev].slice(0, 50));
-    }
-  }, []);
+    },
+    [specs]
+  );
 
   useEffect(() => {
+    previousStatuses.current = getDefaultStatuses();
+    setAlerts([]);
+  }, [specs]);
+
+  useEffect(() => {
+    if (hasActiveSession) {
+      setHistory((prev) => (prev.length > 0 ? prev : generateInitialHistory()));
+      return;
+    }
+
+    setHistory([]);
+    setAlerts([]);
+    previousStatuses.current = getDefaultStatuses();
+  }, [hasActiveSession]);
+
+  useEffect(() => {
+    if (!hasActiveSession) return;
+
     const interval = setInterval(() => {
       setHistory((prev) => {
-        const last = prev[prev.length - 1];
+        const last = prev[prev.length - 1] ?? EMPTY_POINT;
         const newPoint: WeldDataPoint = {
           timestamp: Date.now(),
-          current: Math.round(randomWalk(last.current, 140, 290, 0.03) * 10) / 10,
-          voltage: Math.round(randomWalk(last.voltage, 16, 34, 0.02) * 10) / 10,
-          gasflow: Math.round(randomWalk(last.gasflow, 10, 24, 0.015) * 10) / 10,
-          wirefeed: Math.round(randomWalk(last.wirefeed, 4, 15, 0.02) * 10) / 10,
+          current: Math.round(randomWalk(last.current || 210, 140, 290, 0.03) * 10) / 10,
+          voltage: Math.round(randomWalk(last.voltage || 25, 16, 34, 0.02) * 10) / 10,
+          gasflow: Math.round(randomWalk(last.gasflow || 17, 10, 24, 0.015) * 10) / 10,
+          wirefeed: Math.round(randomWalk(last.wirefeed || 9, 4, 15, 0.02) * 10) / 10,
         };
+
         checkAlerts(newPoint);
-        return [...prev.slice(-HISTORY_LENGTH), newPoint];
+        return [...prev.slice(-HISTORY_LENGTH + 1), newPoint];
       });
     }, UPDATE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [checkAlerts]);
+  }, [checkAlerts, hasActiveSession]);
 
   const acknowledgeAlert = useCallback((id: string) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, acknowledged: true } : a))
-    );
+    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)));
   }, []);
 
-  const addSession = useCallback((session: WeldSession) => {
-    setSessions((prev) => [session, ...prev]);
-  }, []);
+  const addSession = useCallback(async () => true, []);
 
   return { latestPoint, history, alerts, sessions, acknowledgeAlert, addSession };
 }

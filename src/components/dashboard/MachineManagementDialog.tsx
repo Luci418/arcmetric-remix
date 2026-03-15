@@ -16,10 +16,10 @@ import { Machine } from '@/lib/weldTypes';
 
 interface MachineManagementDialogProps {
   machines: Machine[];
-  onAdd: (id: string, name: string) => void;
-  onRemove: (id: string) => void;
-  onRetire: (id: string) => void;
-  onReactivate: (id: string) => void;
+  onAdd: (id: string, name: string) => Promise<boolean> | boolean | void;
+  onRemove: (id: string) => Promise<boolean> | boolean | void;
+  onRetire: (id: string) => Promise<boolean> | boolean | void;
+  onReactivate: (id: string) => Promise<boolean> | boolean | void;
 }
 
 export function MachineManagementDialog({
@@ -32,13 +32,27 @@ export function MachineManagementDialog({
   const [newId, setNewId] = useState('');
   const [newName, setNewName] = useState('');
   const [open, setOpen] = useState(false);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
 
-  const handleAdd = () => {
+  const runAction = async (actionKey: string, action: () => Promise<boolean> | boolean | void) => {
+    setBusyAction(actionKey);
+    try {
+      const result = await action();
+      return result !== false;
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleAdd = async () => {
     const id = newId.trim();
     const name = newName.trim();
     if (!id || !name) return;
-    if (machines.some((m) => m.id === id)) return;
-    onAdd(id, name);
+    if (machines.some((machine) => machine.id === id)) return;
+
+    const ok = await runAction('add', () => onAdd(id, name));
+    if (!ok) return;
+
     setNewId('');
     setNewName('');
   };
@@ -57,34 +71,35 @@ export function MachineManagementDialog({
           <DialogDescription>Add, retire, or remove welding machines from your fleet.</DialogDescription>
         </DialogHeader>
 
-        {/* Add new machine */}
         <div className="flex gap-2">
           <Input
             placeholder="Machine ID (e.g. ESP32-WM-014)"
             value={newId}
             onChange={(e) => setNewId(e.target.value)}
             className="flex-1 text-xs"
+            disabled={Boolean(busyAction)}
           />
           <Input
             placeholder="Name (e.g. Bay 6 – MIG)"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             className="flex-1 text-xs"
+            disabled={Boolean(busyAction)}
           />
-          <Button size="sm" onClick={handleAdd} disabled={!newId.trim() || !newName.trim()}>
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            disabled={!newId.trim() || !newName.trim() || Boolean(busyAction)}
+          >
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
 
-        {/* Machine list */}
-        <div className="max-h-[300px] overflow-y-auto divide-y divide-border rounded-lg border border-border">
+        <div className="max-h-[300px] divide-y divide-border overflow-y-auto rounded-lg border border-border">
           {machines.map((machine) => (
             <div
               key={machine.id}
-              className={cn(
-                'flex items-center justify-between px-4 py-3',
-                machine.status === 'retired' && 'opacity-50'
-              )}
+              className={cn('flex items-center justify-between px-4 py-3', machine.status === 'retired' && 'opacity-50')}
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -109,8 +124,9 @@ export function MachineManagementDialog({
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-status-warning"
-                    onClick={() => onRetire(machine.id)}
+                    onClick={() => runAction(`retire-${machine.id}`, () => onRetire(machine.id))}
                     title="Retire"
+                    disabled={Boolean(busyAction)}
                   >
                     <PowerOff className="h-3.5 w-3.5" />
                   </Button>
@@ -118,9 +134,10 @@ export function MachineManagementDialog({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:status-ok"
-                    onClick={() => onReactivate(machine.id)}
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-status-ok"
+                    onClick={() => runAction(`reactivate-${machine.id}`, () => onReactivate(machine.id))}
                     title="Reactivate"
+                    disabled={Boolean(busyAction)}
                   >
                     <Power className="h-3.5 w-3.5" />
                   </Button>
@@ -129,8 +146,9 @@ export function MachineManagementDialog({
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-status-critical"
-                  onClick={() => onRemove(machine.id)}
+                  onClick={() => runAction(`remove-${machine.id}`, () => onRemove(machine.id))}
                   title="Remove permanently"
+                  disabled={Boolean(busyAction)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
