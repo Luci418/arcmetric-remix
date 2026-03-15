@@ -23,10 +23,10 @@ interface DashboardHeaderProps {
   selectedMachine: string;
   onMachineChange: (machineId: string) => void;
   machines: Machine[];
-  onAddMachine: (id: string, name: string) => void;
-  onRemoveMachine: (id: string) => void;
-  onRetireMachine: (id: string) => void;
-  onReactivateMachine: (id: string) => void;
+  onAddMachine: (id: string, name: string) => Promise<boolean> | boolean | void;
+  onRemoveMachine: (id: string) => Promise<boolean> | boolean | void;
+  onRetireMachine: (id: string) => Promise<boolean> | boolean | void;
+  onReactivateMachine: (id: string) => Promise<boolean> | boolean | void;
 }
 
 export function DashboardHeader({
@@ -44,7 +44,7 @@ export function DashboardHeader({
   onReactivateMachine,
 }: DashboardHeaderProps) {
   const isAWS = dataSource === 'aws';
-  const activeMachines = machines.filter((m) => m.status === 'active');
+  const activeMachines = machines.filter((machine) => machine.status === 'active');
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-6 py-4">
@@ -59,7 +59,6 @@ export function DashboardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* Machine selector */}
         <div className="flex items-center gap-2">
           <MonitorSpeaker className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedMachine} onValueChange={onMachineChange}>
@@ -67,17 +66,16 @@ export function DashboardHeader({
               <SelectValue placeholder="Select machine" />
             </SelectTrigger>
             <SelectContent>
-              {activeMachines.map((m) => (
-                <SelectItem key={m.id} value={m.id} className="text-xs">
-                  <span className="font-mono-data">{m.id}</span>
-                  <span className="ml-1.5 text-muted-foreground">— {m.name}</span>
+              {activeMachines.map((machine) => (
+                <SelectItem key={machine.id} value={machine.id} className="text-xs">
+                  <span className="font-mono-data">{machine.id}</span>
+                  <span className="ml-1.5 text-muted-foreground">— {machine.name}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Machine management */}
         <MachineManagementDialog
           machines={machines}
           onAdd={onAddMachine}
@@ -86,7 +84,6 @@ export function DashboardHeader({
           onReactivate={onReactivateMachine}
         />
 
-        {/* Data source toggle */}
         <div className="flex items-center gap-2">
           <Label htmlFor="data-source" className="text-xs text-muted-foreground">
             {isAWS ? (
@@ -100,13 +97,10 @@ export function DashboardHeader({
           <Switch
             id="data-source"
             checked={isAWS}
-            onCheckedChange={(checked) =>
-              onDataSourceChange(checked ? 'aws' : 'simulated')
-            }
+            onCheckedChange={(checked) => onDataSourceChange(checked ? 'aws' : 'simulated')}
           />
         </div>
 
-        {/* Connection status */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {isAWS ? (
             awsConnected ? (

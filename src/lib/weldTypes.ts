@@ -15,6 +15,7 @@ export interface WeldDataPoint {
   voltage: number;
   gasflow: number;
   wirefeed: number;
+  sessionId?: string;
 }
 
 export interface WeldAlert {
@@ -28,6 +29,8 @@ export interface WeldAlert {
   acknowledged: boolean;
 }
 
+export type WeldSessionStatus = 'active' | 'completed' | 'failed';
+
 export interface WeldSession {
   id: string;
   operator: string;
@@ -35,7 +38,7 @@ export interface WeldSession {
   wpsRef: string;
   startTime: Date;
   endTime?: Date;
-  status: 'active' | 'completed' | 'failed';
+  status: WeldSessionStatus;
   avgCurrent: number;
   avgVoltage: number;
   avgGasflow: number;
