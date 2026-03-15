@@ -312,7 +312,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
   const addSession = useCallback(async (session: WeldSession) => {
     try {
       const payload = serializeSession(session);
-      const created = await createSessionApi(payload).catch(() => payload);
+      const created = await createSessionApi(payload);
       const mapped = mapSession((created ?? payload) as Record<string, any>);
 
       setSessions((prev) => [mapped, ...prev.filter((existing) => existing.id !== mapped.id)]);
