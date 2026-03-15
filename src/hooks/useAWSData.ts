@@ -388,7 +388,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
   const retireMachine = useCallback(async (id: string) => {
     try {
       const payload = { status: 'retired' as const };
-      await updateMachineApi(id, payload).catch(() => null);
+      await updateMachineApi(id, payload);
 
       setMachines((prev) =>
         prev.map((machine) => (machine.id === id ? { ...machine, status: 'retired' as const } : machine))
