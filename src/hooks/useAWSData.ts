@@ -329,7 +329,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
       const endTime = status === 'active' ? undefined : Date.now();
       const payload = { status, ...(endTime ? { endTime } : {}) };
 
-      const updated = await updateSessionApi(sessionId, payload).catch(() => null);
+      const updated = await updateSessionApi(sessionId, payload);
 
       setSessions((prev) =>
         prev.map((session) => {
