@@ -5,8 +5,10 @@ import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHea
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
-import { WeldSessionTable } from '@/components/dashboard/WeldSessionTable';
-import { WPSCompliance } from '@/components/dashboard/WPSCompliance';
+import { ActiveSessionCard } from '@/components/dashboard/ActiveSessionCard';
+import { SessionHistoryTable } from '@/components/dashboard/SessionHistoryTable';
+import { CreateSessionDialog } from '@/components/dashboard/CreateSessionDialog';
+import { WPSInfoBar } from '@/components/dashboard/WPSInfoBar';
 import { TimeRangeSelector } from '@/components/dashboard/TimeRangeSelector';
 import { WPSSettingsDialog } from '@/components/dashboard/WPSSettingsDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -145,6 +147,12 @@ const Index = () => {
     setActivePresetId(presetId);
   };
 
+  const selectedMachineObj = machines.find((m) => m.id === selectedMachine);
+
+  const enrichedActiveSession = activeSessionForMachine
+    ? sessions.find((s) => s.id === activeSessionForMachine.id) ?? activeSessionForMachine
+    : undefined;
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
@@ -162,14 +170,33 @@ const Index = () => {
         onReactivateMachine={reactivateMachine}
       />
 
-      <main className="mx-auto max-w-7xl px-6 py-6">
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+        {/* Active Session + New Session */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <ActiveSessionCard
+              session={enrichedActiveSession}
+              machine={selectedMachineObj}
+              onComplete={(id) => updateSessionStatus(id, 'completed')}
+              onFail={(id) => updateSessionStatus(id, 'failed')}
+            />
+          </div>
+          <CreateSessionDialog
+            machines={machines}
+            sessions={awsSessions}
+            onCreateSession={handleCreateSession}
+          />
+        </div>
+
+        {/* Metric Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {METRIC_KEYS.map((key) => (
             <MetricCard key={key} metricKey={key} value={latestPoint[key]} specs={activeSpecs} />
           ))}
         </div>
 
-        <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Chart + Alerts */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <Tabs value={activeChart} onValueChange={(value) => setActiveChart(value as MetricKey)}>
@@ -195,26 +222,26 @@ const Index = () => {
                 />
               </div>
             </div>
-            <LiveChart
-              data={filteredHistory}
-              activeMetric={activeChart}
+            <WPSInfoBar
+              current={latestPoint}
               specs={activeSpecs}
-              timeRange={timeRange}
+              activePresetId={activePresetId}
             />
+            <div className="mt-3">
+              <LiveChart
+                data={filteredHistory}
+                activeMetric={activeChart}
+                specs={activeSpecs}
+                timeRange={timeRange}
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <WPSCompliance current={latestPoint} specs={activeSpecs} activePresetId={activePresetId} />
-            <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
-          </div>
+          <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
         </div>
 
-        <WeldSessionTable
-          sessions={sessions}
-          machines={machines}
-          onCreateSession={handleCreateSession}
-          onUpdateSessionStatus={updateSessionStatus}
-        />
+        {/* Session History */}
+        <SessionHistoryTable sessions={sessions} />
       </main>
     </div>
   );

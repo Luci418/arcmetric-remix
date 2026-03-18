@@ -20,24 +20,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { WeldSession, Machine, WELD_PROCESS_PRESETS } from '@/lib/weldTypes';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 interface CreateSessionDialogProps {
   machines: Machine[];
+  sessions: WeldSession[];
   onCreateSession: (session: WeldSession) => Promise<boolean> | boolean | void;
 }
 
-export function CreateSessionDialog({ machines, onCreateSession }: CreateSessionDialogProps) {
+export function CreateSessionDialog({ machines, sessions, onCreateSession }: CreateSessionDialogProps) {
   const [open, setOpen] = useState(false);
   const [operator, setOperator] = useState('');
   const [machineId, setMachineId] = useState('');
   const [wpsRef, setWpsRef] = useState('');
-  const [status, setStatus] = useState<'active' | 'completed' | 'failed'>('active');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeMachines = machines.filter((machine) => machine.status === 'active');
 
+  // Check if selected machine already has an active session
+  const machineHasActiveSession = machineId
+    ? sessions.some((s) => s.machineId === machineId && s.status === 'active')
+    : false;
+
   const handleCreate = async () => {
-    if (!operator.trim() || !machineId || !wpsRef || isSubmitting) return;
+    if (!operator.trim() || !machineId || !wpsRef || isSubmitting || machineHasActiveSession) return;
 
     const now = new Date();
     const session: WeldSession = {
@@ -46,17 +53,12 @@ export function CreateSessionDialog({ machines, onCreateSession }: CreateSession
       machineId,
       wpsRef,
       startTime: now,
-      endTime: status !== 'active' ? new Date(now.getTime() + 30 * 60000) : undefined,
-      status,
+      endTime: undefined,
+      status: 'active',
       avgCurrent: 0,
       avgVoltage: 0,
       avgGasflow: 0,
-      qualityScore:
-        status === 'active'
-          ? 0
-          : status === 'completed'
-            ? 85 + Math.floor(Math.random() * 15)
-            : 30 + Math.floor(Math.random() * 30),
+      qualityScore: 0,
     };
 
     setIsSubmitting(true);
@@ -67,7 +69,6 @@ export function CreateSessionDialog({ machines, onCreateSession }: CreateSession
       setOperator('');
       setMachineId('');
       setWpsRef('');
-      setStatus('active');
       setOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -108,14 +109,27 @@ export function CreateSessionDialog({ machines, onCreateSession }: CreateSession
                 <SelectValue placeholder="Select machine" />
               </SelectTrigger>
               <SelectContent>
-                {activeMachines.map((machine) => (
-                  <SelectItem key={machine.id} value={machine.id} className="text-xs">
-                    {machine.id} — {machine.name}
-                  </SelectItem>
-                ))}
+                {activeMachines.map((machine) => {
+                  const hasActive = sessions.some((s) => s.machineId === machine.id && s.status === 'active');
+                  return (
+                    <SelectItem key={machine.id} value={machine.id} className="text-xs">
+                      {machine.id} — {machine.name}
+                      {hasActive && <span className="ml-1.5 text-status-warning">(active session)</span>}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
+
+          {machineHasActiveSession && (
+            <Alert variant="destructive" className="py-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                This machine already has an active session. Complete or fail it before starting a new one.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="grid gap-1.5">
             <Label className="text-xs">WPS Reference</Label>
@@ -132,27 +146,13 @@ export function CreateSessionDialog({ machines, onCreateSession }: CreateSession
               </SelectContent>
             </Select>
           </div>
-
-          <div className="grid gap-1.5">
-            <Label className="text-xs">Initial Status</Label>
-            <Select value={status} onValueChange={(value) => setStatus(value as 'active' | 'completed' | 'failed')}>
-              <SelectTrigger className="text-sm" disabled={isSubmitting}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active" className="text-xs">Active</SelectItem>
-                <SelectItem value="completed" className="text-xs">Completed</SelectItem>
-                <SelectItem value="failed" className="text-xs">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>Cancel</Button>
           <Button
             onClick={handleCreate}
-            disabled={!operator.trim() || !machineId || !wpsRef || isSubmitting}
+            disabled={!operator.trim() || !machineId || !wpsRef || isSubmitting || machineHasActiveSession}
           >
             {isSubmitting ? 'Creating...' : 'Create Session'}
           </Button>
