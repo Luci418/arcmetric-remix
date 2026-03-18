@@ -7,7 +7,6 @@ import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
 import { ActiveSessionCard } from '@/components/dashboard/ActiveSessionCard';
 import { SessionHistoryTable } from '@/components/dashboard/SessionHistoryTable';
-import { CreateSessionDialog } from '@/components/dashboard/CreateSessionDialog';
 import { WPSInfoBar } from '@/components/dashboard/WPSInfoBar';
 import { TimeRangeSelector } from '@/components/dashboard/TimeRangeSelector';
 import { WPSSettingsDialog } from '@/components/dashboard/WPSSettingsDialog';
@@ -123,6 +122,11 @@ const Index = () => {
     [addSession]
   );
 
+  const handleEndSession = useCallback(
+    (sessionId: string) => updateSessionStatus(sessionId, 'completed'),
+    [updateSessionStatus]
+  );
+
   const filteredHistory = useMemo(() => {
     if (timeRange === 'live') return history.slice(-60);
 
@@ -171,23 +175,6 @@ const Index = () => {
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        {/* Active Session + New Session */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <ActiveSessionCard
-              session={enrichedActiveSession}
-              machine={selectedMachineObj}
-              onComplete={(id) => updateSessionStatus(id, 'completed')}
-              onFail={(id) => updateSessionStatus(id, 'failed')}
-            />
-          </div>
-          <CreateSessionDialog
-            machines={machines}
-            sessions={awsSessions}
-            onCreateSession={handleCreateSession}
-          />
-        </div>
-
         {/* Metric Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {METRIC_KEYS.map((key) => (
@@ -239,6 +226,16 @@ const Index = () => {
 
           <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
         </div>
+
+        {/* Active Session — below chart */}
+        <ActiveSessionCard
+          session={enrichedActiveSession}
+          machine={selectedMachineObj}
+          machines={machines}
+          allSessions={awsSessions}
+          onEndSession={handleEndSession}
+          onCreateSession={handleCreateSession}
+        />
 
         {/* Session History */}
         <SessionHistoryTable sessions={sessions} />

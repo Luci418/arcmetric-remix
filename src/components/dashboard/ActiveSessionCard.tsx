@@ -1,13 +1,16 @@
-import { Clock, Square, XCircle, User, Cpu, FileText, Timer } from 'lucide-react';
+import { useState } from 'react';
+import { Clock, StopCircle, User, Cpu, FileText, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WeldSession, Machine } from '@/lib/weldTypes';
-import { cn } from '@/lib/utils';
+import { CreateSessionDialog } from '@/components/dashboard/CreateSessionDialog';
 
 interface ActiveSessionCardProps {
   session: WeldSession | undefined;
   machine: Machine | undefined;
-  onComplete: (sessionId: string) => void;
-  onFail: (sessionId: string) => void;
+  machines: Machine[];
+  allSessions: WeldSession[];
+  onEndSession: (sessionId: string) => void;
+  onCreateSession: (session: WeldSession) => Promise<boolean> | boolean | void;
 }
 
 function formatDuration(startTime: Date): string {
@@ -22,18 +25,37 @@ function formatDuration(startTime: Date): string {
   return `${seconds}s`;
 }
 
-export function ActiveSessionCard({ session, machine, onComplete, onFail }: ActiveSessionCardProps) {
+export function ActiveSessionCard({ session, machine, machines, allSessions, onEndSession, onCreateSession }: ActiveSessionCardProps) {
+  const [ending, setEnding] = useState(false);
+
+  const handleEnd = async () => {
+    if (!session || ending) return;
+    setEnding(true);
+    try {
+      await onEndSession(session.id);
+    } finally {
+      setEnding(false);
+    }
+  };
+
   if (!session) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card p-5 shadow-sm">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-            <Clock className="h-4 w-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+              <Clock className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">No Active Session</p>
+              <p className="text-xs">Start a new session to begin monitoring</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">No Active Session</p>
-            <p className="text-xs">Start a new session to begin monitoring</p>
-          </div>
+          <CreateSessionDialog
+            machines={machines}
+            sessions={allSessions}
+            onCreateSession={onCreateSession}
+          />
         </div>
       </div>
     );
@@ -41,7 +63,6 @@ export function ActiveSessionCard({ session, machine, onComplete, onFail }: Acti
 
   return (
     <div className="rounded-xl border border-status-ok/30 bg-card shadow-sm">
-      {/* Green accent top bar */}
       <div className="h-1 rounded-t-xl bg-status-ok" />
 
       <div className="p-5">
@@ -55,26 +76,16 @@ export function ActiveSessionCard({ session, machine, onComplete, onFail }: Acti
             <span className="font-mono-data text-xs text-muted-foreground">{session.id}</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1 border-status-ok/30 px-2.5 text-[11px] font-semibold text-status-ok hover:bg-status-ok/10"
-              onClick={() => onComplete(session.id)}
-            >
-              <Square className="h-3 w-3" />
-              Complete
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1 border-status-critical/30 px-2.5 text-[11px] font-semibold text-status-critical hover:bg-status-critical/10"
-              onClick={() => onFail(session.id)}
-            >
-              <XCircle className="h-3 w-3" />
-              Fail
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1 border-status-critical/30 px-3 text-[11px] font-semibold text-status-critical hover:bg-status-critical/10"
+            onClick={handleEnd}
+            disabled={ending}
+          >
+            <StopCircle className="h-3 w-3" />
+            {ending ? 'Ending…' : 'End Session'}
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
@@ -101,14 +112,13 @@ export function ActiveSessionCard({ session, machine, onComplete, onFail }: Acti
             <span className="text-[11px] text-muted-foreground">Quality</span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
               <div
-                className={cn(
-                  'h-full rounded-full transition-all',
+                className={
                   session.qualityScore >= 80
-                    ? 'bg-status-ok'
+                    ? 'h-full rounded-full bg-status-ok transition-all'
                     : session.qualityScore >= 60
-                      ? 'bg-status-warning'
-                      : 'bg-status-critical'
-                )}
+                      ? 'h-full rounded-full bg-status-warning transition-all'
+                      : 'h-full rounded-full bg-status-critical transition-all'
+                }
                 style={{ width: `${session.qualityScore}%` }}
               />
             </div>
