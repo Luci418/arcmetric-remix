@@ -123,7 +123,10 @@ const Index = () => {
   );
 
   const handleEndSession = useCallback(
-    (sessionId: string) => updateSessionStatus(sessionId, 'completed'),
+    async (sessionId: string) => {
+      const result = await updateSessionStatus(sessionId, 'completed');
+      return result;
+    },
     [updateSessionStatus]
   );
 

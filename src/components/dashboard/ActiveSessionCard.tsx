@@ -3,13 +3,14 @@ import { Clock, StopCircle, User, Cpu, FileText, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WeldSession, Machine } from '@/lib/weldTypes';
 import { CreateSessionDialog } from '@/components/dashboard/CreateSessionDialog';
+import { toast } from 'sonner';
 
 interface ActiveSessionCardProps {
   session: WeldSession | undefined;
   machine: Machine | undefined;
   machines: Machine[];
   allSessions: WeldSession[];
-  onEndSession: (sessionId: string) => void;
+  onEndSession: (sessionId: string) => Promise<boolean> | boolean | void;
   onCreateSession: (session: WeldSession) => Promise<boolean> | boolean | void;
 }
 
@@ -32,7 +33,15 @@ export function ActiveSessionCard({ session, machine, machines, allSessions, onE
     if (!session || ending) return;
     setEnding(true);
     try {
-      await onEndSession(session.id);
+      const result = await onEndSession(session.id);
+      if (result === false) {
+        toast.error('Failed to end session. Check AWS connection.');
+      } else {
+        toast.success(`Session ${session.id} completed.`);
+      }
+    } catch (err) {
+      toast.error('Failed to end session. Check AWS connection.');
+      console.error('End session error:', err);
     } finally {
       setEnding(false);
     }

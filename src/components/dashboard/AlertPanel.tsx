@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, BellOff, ArrowUp, ArrowDown } from 'lucide-react';
 import { WeldAlert } from '@/lib/weldTypes';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,21 +9,45 @@ interface AlertPanelProps {
   onAcknowledge: (id: string) => void;
 }
 
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m ago`;
+}
+
+function isAboveLimit(alert: WeldAlert): boolean {
+  return alert.value > alert.threshold;
+}
+
 export function AlertPanel({ alerts, onAcknowledge }: AlertPanelProps) {
-  const unacknowledged = alerts.filter((a) => !a.acknowledged);
+  const active = alerts.filter((a) => !a.acknowledged);
+  const dismissed = alerts.filter((a) => a.acknowledged);
+
+  const handleDismissAll = () => {
+    active.forEach((a) => onAcknowledge(a.id));
+  };
 
   return (
     <div className="rounded-xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-foreground">Active Alerts</h3>
-          {unacknowledged.length > 0 && (
-            <span className="rounded-full bg-status-critical\/10 px-2 py-0.5 text-[11px] font-semibold status-critical">
-              {unacknowledged.length}
+          <h3 className="text-sm font-semibold text-foreground">Alerts</h3>
+          {active.length > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-status-critical px-1.5 text-[10px] font-bold text-white">
+              {active.length}
             </span>
           )}
         </div>
+        {active.length > 1 && (
+          <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-[11px] text-muted-foreground" onClick={handleDismissAll}>
+            <BellOff className="h-3 w-3" />
+            Dismiss All
+          </Button>
+        )}
       </div>
 
       <ScrollArea className="h-[280px]">
@@ -34,37 +58,59 @@ export function AlertPanel({ alerts, onAcknowledge }: AlertPanelProps) {
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {alerts.slice(0, 15).map((alert) => (
-              <div
-                key={alert.id}
-                className={cn(
-                  'flex items-start gap-3 px-5 py-3 transition-colors',
-                  !alert.acknowledged && 'bg-muted/50'
-                )}
-              >
-                {alert.severity === 'critical' ? (
-                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 status-critical" />
-                ) : (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 status-warning" />
-                )}
+            {active.map((alert) => (
+              <div key={alert.id} className="flex items-start gap-3 px-5 py-3 bg-muted/40">
+                <div className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+                  alert.severity === 'critical' ? 'bg-status-critical/15' : 'bg-status-warning/15'
+                )}>
+                  {alert.severity === 'critical' ? (
+                    <XCircle className="h-3.5 w-3.5 status-critical" />
+                  ) : (
+                    <AlertTriangle className="h-3.5 w-3.5 status-warning" />
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-foreground">{alert.message}</p>
-                  <p className="font-mono-data text-[11px] text-muted-foreground">
-                    {alert.timestamp.toLocaleTimeString()} · Value: {alert.value.toFixed(1)} · Limit: {alert.threshold}
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-medium text-foreground">{alert.metric}</p>
+                    {isAboveLimit(alert) ? (
+                      <ArrowUp className="h-3 w-3 status-critical" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 status-critical" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {alert.value.toFixed(1)} — limit {alert.threshold} · {timeAgo(alert.timestamp)}
                   </p>
                 </div>
-                {!alert.acknowledged && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 shrink-0 px-2 text-[11px]"
-                    onClick={() => onAcknowledge(alert.id)}
-                  >
-                    Ack
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 shrink-0 px-2 text-[11px]"
+                  onClick={() => onAcknowledge(alert.id)}
+                >
+                  Dismiss
+                </Button>
               </div>
             ))}
+
+            {dismissed.length > 0 && (
+              <>
+                <div className="px-5 py-2 bg-muted/20">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Dismissed</span>
+                </div>
+                {dismissed.slice(0, 10).map((alert) => (
+                  <div key={alert.id} className="flex items-start gap-3 px-5 py-2.5 opacity-50">
+                    <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted">
+                      <CheckCircle2 className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-muted-foreground">{alert.metric} — {alert.value.toFixed(1)}</p>
+                      <p className="text-[10px] text-muted-foreground/60">{timeAgo(alert.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </ScrollArea>
