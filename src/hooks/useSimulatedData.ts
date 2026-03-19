@@ -94,18 +94,19 @@ export function useSimulatedData(specs: WPSSpecSet, hasActiveSession: boolean) {
         }
 
         if (previousStatus !== status) {
+          const midpoint = (spec.wpsMin + spec.wpsMax) / 2;
+          const isAbove = value >= midpoint;
           alertIdCounter.current += 1;
           newAlerts.push({
             id: `alert-${alertIdCounter.current}`,
             timestamp: new Date(point.timestamp),
             severity: status,
             metric: spec.label,
-            message:
-              value > spec.wpsMax
-                ? `${spec.label} above WPS limit (${spec.wpsMax}${spec.unit})`
-                : `${spec.label} below WPS limit (${spec.wpsMin}${spec.unit})`,
+            message: isAbove
+              ? `${spec.label} above WPS limit (${spec.wpsMax}${spec.unit})`
+              : `${spec.label} below WPS limit (${spec.wpsMin}${spec.unit})`,
             value,
-            threshold: value > spec.wpsMax ? spec.wpsMax : spec.wpsMin,
+            threshold: isAbove ? spec.wpsMax : spec.wpsMin,
             acknowledged: false,
           });
         }
