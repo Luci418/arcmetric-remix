@@ -22,7 +22,7 @@ import {
 
 const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
 
-const Index = () => {
+const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const [dataSource, setDataSource] = useState<DataSource>('aws');
   const [activeChart, setActiveChart] = useState<MetricKey>('current');
   const [selectedMachine, setSelectedMachine] = useState('ESP32-WM-001');
@@ -175,6 +175,7 @@ const Index = () => {
         onRemoveMachine={removeMachine}
         onRetireMachine={retireMachine}
         onReactivateMachine={reactivateMachine}
+        onLogout={onLogout}
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
