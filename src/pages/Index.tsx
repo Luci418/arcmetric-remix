@@ -10,6 +10,7 @@ import { SessionHistoryTable } from '@/components/dashboard/SessionHistoryTable'
 import { WPSInfoBar } from '@/components/dashboard/WPSInfoBar';
 import { TimeRangeSelector } from '@/components/dashboard/TimeRangeSelector';
 import { WPSSettingsDialog } from '@/components/dashboard/WPSSettingsDialog';
+import { WeldImageClassifier } from '@/components/dashboard/WeldImageClassifier';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   WPSSpecSet,
@@ -243,6 +244,9 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
 
         {/* Session History */}
         <SessionHistoryTable sessions={sessions} />
+
+        {/* Weld Image Classification */}
+        <WeldImageClassifier sessionId={enrichedActiveSession?.id} />
       </main>
     </div>
   );
