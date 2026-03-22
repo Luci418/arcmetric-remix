@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,6 +12,11 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem('arcmetric_auth') === '1');
+
+  const handleLogout = useCallback(() => {
+    sessionStorage.removeItem('arcmetric_auth');
+    setAuthed(false);
+  }, []);
 
   if (!authed) {
     return (
@@ -32,7 +37,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Index onLogout={handleLogout} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
