@@ -1,4 +1,4 @@
-import { Activity, Bell, Wifi, WifiOff, Cloud, MonitorSpeaker } from 'lucide-react';
+import { Activity, Bell, Wifi, WifiOff, Cloud, MonitorSpeaker, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,7 @@ interface DashboardHeaderProps {
   onRemoveMachine: (id: string) => Promise<boolean> | boolean | void;
   onRetireMachine: (id: string) => Promise<boolean> | boolean | void;
   onReactivateMachine: (id: string) => Promise<boolean> | boolean | void;
+  onLogout?: () => void;
 }
 
 export function DashboardHeader({
@@ -42,6 +43,7 @@ export function DashboardHeader({
   onRemoveMachine,
   onRetireMachine,
   onReactivateMachine,
+  onLogout,
 }: DashboardHeaderProps) {
   const isAWS = dataSource === 'aws';
   const activeMachines = machines.filter((machine) => machine.status === 'active');
@@ -136,6 +138,18 @@ export function DashboardHeader({
             </span>
           )}
         </div>
+
+        {onLogout && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={onLogout}
+            title="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </header>
   );
