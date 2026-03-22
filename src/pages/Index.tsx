@@ -10,6 +10,7 @@ import { SessionHistoryTable } from '@/components/dashboard/SessionHistoryTable'
 import { WPSInfoBar } from '@/components/dashboard/WPSInfoBar';
 import { TimeRangeSelector } from '@/components/dashboard/TimeRangeSelector';
 import { WPSSettingsDialog } from '@/components/dashboard/WPSSettingsDialog';
+import { WeldImageClassifier } from '@/components/dashboard/WeldImageClassifier';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   WPSSpecSet,
@@ -22,7 +23,7 @@ import {
 
 const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
 
-const Index = () => {
+const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const [dataSource, setDataSource] = useState<DataSource>('aws');
   const [activeChart, setActiveChart] = useState<MetricKey>('current');
   const [selectedMachine, setSelectedMachine] = useState('ESP32-WM-001');
@@ -175,6 +176,7 @@ const Index = () => {
         onRemoveMachine={removeMachine}
         onRetireMachine={retireMachine}
         onReactivateMachine={reactivateMachine}
+        onLogout={onLogout}
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
@@ -242,6 +244,9 @@ const Index = () => {
 
         {/* Session History */}
         <SessionHistoryTable sessions={sessions} />
+
+        {/* Weld Image Classification */}
+        <WeldImageClassifier sessionId={enrichedActiveSession?.id} />
       </main>
     </div>
   );
