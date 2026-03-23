@@ -57,7 +57,7 @@ export function getMetricStatus(value: number, wpsMin: number, wpsMax: number): 
   return 'ok';
 }
 
-export type MetricKey = 'current' | 'voltage' | 'gasflow' | 'wirefeed';
+export type MetricKey = 'current' | 'voltage' | 'gasflow' | 'wirefeed' | 'temperature';
 
 export interface MetricSpec {
   min: number;
