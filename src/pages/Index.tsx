@@ -182,12 +182,15 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        {/* Metric Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {METRIC_KEYS.map((key) => (
+        {/* Metric Cards + Vibration */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {METRIC_CARD_KEYS.map((key) => (
             <MetricCard key={key} metricKey={key} value={latestPoint[key]} specs={activeSpecs} />
           ))}
-        </div>
+          <VibrationIndicator
+            value={latestPoint.vibration}
+            recentHistory={history.slice(-60).map((p) => p.vibration)}
+          />
 
         {/* Chart + Alerts */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
