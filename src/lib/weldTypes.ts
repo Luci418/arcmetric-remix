@@ -6,7 +6,7 @@ export interface WeldMetric {
   max: number;
   wpsMin: number;
   wpsMax: number;
-  key: 'current' | 'voltage' | 'gasflow' | 'wirefeed';
+  key: 'current' | 'voltage' | 'gasflow' | 'wirefeed' | 'temperature';
 }
 
 export interface WeldDataPoint {
