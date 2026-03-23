@@ -203,6 +203,7 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
                   <TabsTrigger value="voltage">Voltage</TabsTrigger>
                   <TabsTrigger value="gasflow">Gas Flow</TabsTrigger>
                   <TabsTrigger value="wirefeed">Wire Feed</TabsTrigger>
+                  <TabsTrigger value="temperature">Temperature</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="flex items-center gap-2">
