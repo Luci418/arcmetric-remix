@@ -23,6 +23,7 @@ import {
 } from '@/lib/weldTypes';
 
 const METRIC_CARD_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'temperature'];
+const ALL_METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
 const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const [dataSource, setDataSource] = useState<DataSource>('aws');
