@@ -43,6 +43,7 @@ function getDefaultStatuses(): Record<MetricKey, MetricStatus> {
     voltage: 'ok',
     gasflow: 'ok',
     wirefeed: 'ok',
+    temperature: 'ok',
   };
 }
 
