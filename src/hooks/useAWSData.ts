@@ -279,6 +279,8 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
               voltage: Number(item.voltage ?? 0),
               gasflow: Number(item.gasflow ?? 0),
               wirefeed: Number(item.wirefeed ?? 0),
+              temperature: Number(item.temperature ?? 0),
+              vibration: Number(item.vibration ?? 0),
               sessionId: item.sessionId ? String(item.sessionId) : undefined,
             }))
           : [];

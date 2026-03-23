@@ -156,6 +156,8 @@ export function useSimulatedData(specs: WPSSpecSet, hasActiveSession: boolean) {
           voltage: Math.round(randomWalk(last.voltage || 25, 16, 34, 0.02) * 10) / 10,
           gasflow: Math.round(randomWalk(last.gasflow || 17, 10, 24, 0.015) * 10) / 10,
           wirefeed: Math.round(randomWalk(last.wirefeed || 9, 4, 15, 0.02) * 10) / 10,
+          temperature: Math.round(randomWalk(last.temperature || 35, 20, 90, 0.015) * 10) / 10,
+          vibration: Math.random() > 0.95 ? 1 : 0,
         };
 
         checkAlerts(newPoint);

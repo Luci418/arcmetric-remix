@@ -32,6 +32,7 @@ const METRIC_COLORS: Record<MetricKey, { stroke: string; fill: string }> = {
   voltage: { stroke: 'hsl(262, 60%, 55%)', fill: 'hsl(262, 60%, 55%)' },
   gasflow: { stroke: 'hsl(152, 60%, 42%)', fill: 'hsl(152, 60%, 42%)' },
   wirefeed: { stroke: 'hsl(38, 92%, 50%)', fill: 'hsl(38, 92%, 50%)' },
+  temperature: { stroke: 'hsl(0, 72%, 55%)', fill: 'hsl(0, 72%, 55%)' },
 };
 
 // Custom tooltip component for Google Analytics-style display
