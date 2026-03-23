@@ -89,7 +89,7 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
         const avgGasflow = Number((points.reduce((sum, point) => sum + point.gasflow, 0) / points.length).toFixed(1));
 
         const inSpecCount = points.reduce((count, point) => {
-          const inSpec = METRIC_KEYS.every((metricKey) => {
+          const inSpec = ALL_METRIC_KEYS.every((metricKey) => {
             const spec = activeSpecs[metricKey];
             if (spec.max === 0) return true;
             const value = point[metricKey];
