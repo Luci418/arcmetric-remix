@@ -25,7 +25,7 @@ const POLL_INTERVAL = 3000;
 const METADATA_REFRESH_INTERVAL = 10000;
 const HISTORY_LENGTH = 3600;
 
-const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
 const EMPTY_POINT: WeldDataPoint = {
   timestamp: Date.now(),
@@ -33,6 +33,8 @@ const EMPTY_POINT: WeldDataPoint = {
   voltage: 0,
   gasflow: 0,
   wirefeed: 0,
+  temperature: 0,
+  vibration: 0,
 };
 
 function getDefaultStatuses(): Record<MetricKey, MetricStatus> {
