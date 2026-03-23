@@ -15,6 +15,8 @@ export interface WeldDataPoint {
   voltage: number;
   gasflow: number;
   wirefeed: number;
+  temperature: number;
+  vibration: number; // 0 = stable, 1 = vibration detected
   sessionId?: string;
 }
 
