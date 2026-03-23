@@ -13,7 +13,7 @@ const HISTORY_LENGTH = 3600; // 1 hour at 1s intervals
 const UPDATE_INTERVAL = 1000;
 const INITIAL_POINTS = 300; // 5 min warm history
 
-const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
 const EMPTY_POINT: WeldDataPoint = {
   timestamp: Date.now(),
@@ -21,6 +21,8 @@ const EMPTY_POINT: WeldDataPoint = {
   voltage: 0,
   gasflow: 0,
   wirefeed: 0,
+  temperature: 0,
+  vibration: 0,
 };
 
 function randomWalk(current: number, min: number, max: number, volatility: number = 0.02): number {
