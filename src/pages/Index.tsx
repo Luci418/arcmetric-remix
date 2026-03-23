@@ -3,6 +3,7 @@ import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useAWSData } from '@/hooks/useAWSData';
 import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
+import { VibrationIndicator } from '@/components/dashboard/VibrationIndicator';
 import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
 import { ActiveSessionCard } from '@/components/dashboard/ActiveSessionCard';
@@ -21,7 +22,7 @@ import {
   MetricKey,
 } from '@/lib/weldTypes';
 
-const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+const METRIC_CARD_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'temperature'];
 
 const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const [dataSource, setDataSource] = useState<DataSource>('aws');
