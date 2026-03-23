@@ -94,6 +94,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 50, wpsMin: 18, wpsMax: 32, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 30, wpsMin: 12, wpsMax: 22, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 20, wpsMin: 5, wpsMax: 14, unit: 'm/min', label: 'Wire Feed Speed' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 80, unit: '°C', label: 'Temperature' },
     },
   },
   {
