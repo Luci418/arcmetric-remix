@@ -50,6 +50,7 @@
     --metric-voltage: 262 60% 55%;
     --metric-gasflow: 152 60% 42%;
     --metric-wirefeed: 38 92% 50%;
+    --metric-temperature: 0 72% 55%;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;

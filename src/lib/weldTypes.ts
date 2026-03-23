@@ -6,7 +6,7 @@ export interface WeldMetric {
   max: number;
   wpsMin: number;
   wpsMax: number;
-  key: 'current' | 'voltage' | 'gasflow' | 'wirefeed';
+  key: 'current' | 'voltage' | 'gasflow' | 'wirefeed' | 'temperature';
 }
 
 export interface WeldDataPoint {
@@ -15,6 +15,8 @@ export interface WeldDataPoint {
   voltage: number;
   gasflow: number;
   wirefeed: number;
+  temperature: number;
+  vibration: number; // 0 = stable, 1 = vibration detected
   sessionId?: string;
 }
 
@@ -55,7 +57,7 @@ export function getMetricStatus(value: number, wpsMin: number, wpsMax: number): 
   return 'ok';
 }
 
-export type MetricKey = 'current' | 'voltage' | 'gasflow' | 'wirefeed';
+export type MetricKey = 'current' | 'voltage' | 'gasflow' | 'wirefeed' | 'temperature';
 
 export interface MetricSpec {
   min: number;
@@ -92,6 +94,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 50, wpsMin: 18, wpsMax: 32, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 30, wpsMin: 12, wpsMax: 22, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 20, wpsMin: 5, wpsMax: 14, unit: 'm/min', label: 'Wire Feed Speed' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 80, unit: '°C', label: 'Temperature' },
     },
   },
   {
@@ -106,6 +109,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 40, wpsMin: 17, wpsMax: 28, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 30, wpsMin: 14, wpsMax: 20, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 18, wpsMin: 4, wpsMax: 12, unit: 'm/min', label: 'Wire Feed Speed' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 70, unit: '°C', label: 'Temperature' },
     },
   },
   {
@@ -120,6 +124,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 30, wpsMin: 10, wpsMax: 18, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 25, wpsMin: 8, wpsMax: 15, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 5, wpsMin: 0.5, wpsMax: 3, unit: 'm/min', label: 'Filler Feed Rate' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 75, unit: '°C', label: 'Temperature' },
     },
   },
   {
@@ -134,6 +139,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 30, wpsMin: 12, wpsMax: 20, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 30, wpsMin: 12, wpsMax: 20, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 6, wpsMin: 0.5, wpsMax: 4, unit: 'm/min', label: 'Filler Feed Rate' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 85, unit: '°C', label: 'Temperature' },
     },
   },
   {
@@ -148,6 +154,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 40, wpsMin: 20, wpsMax: 30, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 0, wpsMin: 0, wpsMax: 0, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 0, wpsMin: 0, wpsMax: 0, unit: 'm/min', label: 'Electrode Consumption' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 80, unit: '°C', label: 'Temperature' },
     },
   },
   {
@@ -162,6 +169,7 @@ export const WELD_PROCESS_PRESETS: WeldProcessPreset[] = [
       voltage: { min: 0, max: 40, wpsMin: 22, wpsMax: 28, unit: 'V', label: 'Arc Voltage' },
       gasflow: { min: 0, max: 0, wpsMin: 0, wpsMax: 0, unit: 'L/min', label: 'Gas Flow Rate' },
       wirefeed: { min: 0, max: 0, wpsMin: 0, wpsMax: 0, unit: 'm/min', label: 'Electrode Consumption' },
+      temperature: { min: -10, max: 150, wpsMin: 15, wpsMax: 75, unit: '°C', label: 'Temperature' },
     },
   },
 ];

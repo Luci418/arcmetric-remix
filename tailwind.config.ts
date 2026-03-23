@@ -58,6 +58,7 @@ export default {
           voltage: "hsl(var(--metric-voltage))",
           gasflow: "hsl(var(--metric-gasflow))",
           wirefeed: "hsl(var(--metric-wirefeed))",
+          temperature: "hsl(var(--metric-temperature))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

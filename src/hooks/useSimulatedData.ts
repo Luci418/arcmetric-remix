@@ -13,7 +13,7 @@ const HISTORY_LENGTH = 3600; // 1 hour at 1s intervals
 const UPDATE_INTERVAL = 1000;
 const INITIAL_POINTS = 300; // 5 min warm history
 
-const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
 const EMPTY_POINT: WeldDataPoint = {
   timestamp: Date.now(),
@@ -21,6 +21,8 @@ const EMPTY_POINT: WeldDataPoint = {
   voltage: 0,
   gasflow: 0,
   wirefeed: 0,
+  temperature: 0,
+  vibration: 0,
 };
 
 function randomWalk(current: number, min: number, max: number, volatility: number = 0.02): number {
@@ -35,6 +37,7 @@ function generateInitialHistory(): WeldDataPoint[] {
   let voltage = 25;
   let gasflow = 17;
   let wirefeed = 9;
+  let temperature = 35;
   const now = Date.now();
 
   for (let i = INITIAL_POINTS; i >= 0; i--) {
@@ -42,6 +45,7 @@ function generateInitialHistory(): WeldDataPoint[] {
     voltage = randomWalk(voltage, 16, 34, 0.02);
     gasflow = randomWalk(gasflow, 10, 24, 0.015);
     wirefeed = randomWalk(wirefeed, 4, 15, 0.02);
+    temperature = randomWalk(temperature, 20, 90, 0.015);
 
     points.push({
       timestamp: now - i * UPDATE_INTERVAL,
@@ -49,6 +53,8 @@ function generateInitialHistory(): WeldDataPoint[] {
       voltage: Math.round(voltage * 10) / 10,
       gasflow: Math.round(gasflow * 10) / 10,
       wirefeed: Math.round(wirefeed * 10) / 10,
+      temperature: Math.round(temperature * 10) / 10,
+      vibration: Math.random() > 0.95 ? 1 : 0,
     });
   }
 
@@ -61,6 +67,7 @@ function getDefaultStatuses(): Record<MetricKey, MetricStatus> {
     voltage: 'ok',
     gasflow: 'ok',
     wirefeed: 'ok',
+    temperature: 'ok',
   };
 }
 
@@ -149,6 +156,8 @@ export function useSimulatedData(specs: WPSSpecSet, hasActiveSession: boolean) {
           voltage: Math.round(randomWalk(last.voltage || 25, 16, 34, 0.02) * 10) / 10,
           gasflow: Math.round(randomWalk(last.gasflow || 17, 10, 24, 0.015) * 10) / 10,
           wirefeed: Math.round(randomWalk(last.wirefeed || 9, 4, 15, 0.02) * 10) / 10,
+          temperature: Math.round(randomWalk(last.temperature || 35, 20, 90, 0.015) * 10) / 10,
+          vibration: Math.random() > 0.95 ? 1 : 0,
         };
 
         checkAlerts(newPoint);

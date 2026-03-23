@@ -3,6 +3,7 @@ import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useAWSData } from '@/hooks/useAWSData';
 import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
 import { MetricCard } from '@/components/dashboard/MetricCard';
+import { VibrationIndicator } from '@/components/dashboard/VibrationIndicator';
 import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
 import { ActiveSessionCard } from '@/components/dashboard/ActiveSessionCard';
@@ -21,7 +22,8 @@ import {
   MetricKey,
 } from '@/lib/weldTypes';
 
-const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+const METRIC_CARD_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'temperature'];
+const ALL_METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
 const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const [dataSource, setDataSource] = useState<DataSource>('aws');
@@ -87,7 +89,7 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
         const avgGasflow = Number((points.reduce((sum, point) => sum + point.gasflow, 0) / points.length).toFixed(1));
 
         const inSpecCount = points.reduce((count, point) => {
-          const inSpec = METRIC_KEYS.every((metricKey) => {
+          const inSpec = ALL_METRIC_KEYS.every((metricKey) => {
             const spec = activeSpecs[metricKey];
             if (spec.max === 0) return true;
             const value = point[metricKey];
@@ -180,11 +182,15 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
       />
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-6">
-        {/* Metric Cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {METRIC_KEYS.map((key) => (
+        {/* Metric Cards + Vibration */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {METRIC_CARD_KEYS.map((key) => (
             <MetricCard key={key} metricKey={key} value={latestPoint[key]} specs={activeSpecs} />
           ))}
+          <VibrationIndicator
+            value={latestPoint.vibration}
+            recentHistory={history.slice(-60).map((p) => p.vibration)}
+          />
         </div>
 
         {/* Chart + Alerts */}
@@ -197,6 +203,7 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
                   <TabsTrigger value="voltage">Voltage</TabsTrigger>
                   <TabsTrigger value="gasflow">Gas Flow</TabsTrigger>
                   <TabsTrigger value="wirefeed">Wire Feed</TabsTrigger>
+                  <TabsTrigger value="temperature">Temperature</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="flex items-center gap-2">
