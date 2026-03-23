@@ -19,6 +19,7 @@ const metricColors: Record<string, { bg: string; text: string; accent: string }>
   voltage: { bg: 'bg-metric-voltage\/10', text: 'text-metric-voltage', accent: 'bg-metric-voltage' },
   gasflow: { bg: 'bg-metric-gasflow\/10', text: 'text-metric-gasflow', accent: 'bg-metric-gasflow' },
   wirefeed: { bg: 'bg-metric-wirefeed\/10', text: 'text-metric-wirefeed', accent: 'bg-metric-wirefeed' },
+  temperature: { bg: 'bg-metric-temperature\/10', text: 'text-metric-temperature', accent: 'bg-metric-temperature' },
 };
 
 export function MetricCard({ metricKey, value, specs }: MetricCardProps) {
