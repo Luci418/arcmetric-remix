@@ -37,6 +37,7 @@ function generateInitialHistory(): WeldDataPoint[] {
   let voltage = 25;
   let gasflow = 17;
   let wirefeed = 9;
+  let temperature = 35;
   const now = Date.now();
 
   for (let i = INITIAL_POINTS; i >= 0; i--) {
@@ -44,6 +45,7 @@ function generateInitialHistory(): WeldDataPoint[] {
     voltage = randomWalk(voltage, 16, 34, 0.02);
     gasflow = randomWalk(gasflow, 10, 24, 0.015);
     wirefeed = randomWalk(wirefeed, 4, 15, 0.02);
+    temperature = randomWalk(temperature, 20, 90, 0.015);
 
     points.push({
       timestamp: now - i * UPDATE_INTERVAL,
@@ -51,6 +53,8 @@ function generateInitialHistory(): WeldDataPoint[] {
       voltage: Math.round(voltage * 10) / 10,
       gasflow: Math.round(gasflow * 10) / 10,
       wirefeed: Math.round(wirefeed * 10) / 10,
+      temperature: Math.round(temperature * 10) / 10,
+      vibration: Math.random() > 0.95 ? 1 : 0,
     });
   }
 
