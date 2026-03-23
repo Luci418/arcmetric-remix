@@ -191,6 +191,7 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
             value={latestPoint.vibration}
             recentHistory={history.slice(-60).map((p) => p.vibration)}
           />
+        </div>
 
         {/* Chart + Alerts */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
