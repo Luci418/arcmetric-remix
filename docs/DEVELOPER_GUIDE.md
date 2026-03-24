@@ -176,60 +176,66 @@ arcmetric/
 | Service | Resource | Purpose |
 |---------|----------|---------|
 | **API Gateway** | `arcmetric-cv-api` (`a39km4t04h`) | HTTP API v2, `$default` stage, routes all dashboard traffic |
-| **Lambda** | `arcmetric-weld-data` | Read telemetry from DynamoDB |
+| **Lambda** | `arcmetric-query` | Read telemetry from IoT Core DynamoDB table |
 | **Lambda** | `arcmetric-sessions` | CRUD for weld sessions |
 | **Lambda** | `arcmetric-machines` | CRUD for machine fleet |
-| **Lambda** | `arcmetric-simulator` | Generates fake telemetry for active sessions |
-| **EventBridge** | `arcmetric-simulator` rule | Triggers simulator Lambda every 1 minute |
-| **DynamoDB** | `WeldData` | Time-series telemetry storage |
+| **IoT Core** | Thing: `arcmetric_final` | MQTT broker for ESP32 sensor data |
+| **IoT Core Rule** | (configured) | Writes MQTT messages to `ArcmetricWeldData` DynamoDB |
+| **DynamoDB** | `ArcmetricWeldData` | Sensor telemetry (written by IoT Core) |
 | **DynamoDB** | `WeldSessions` | Session metadata |
 | **DynamoDB** | `WeldMachines` | Machine registry |
-| **S3** | `arcmetric-cvdata` | Raw seed data (optional) |
 
 ---
 
 ## 4. DynamoDB Tables
 
-### 4.1 `WeldData` — Telemetry
+### 4.1 `ArcmetricWeldData` — Sensor Telemetry (IoT Core)
 
-| Attribute | Type | Key |
-|-----------|------|-----|
-| `machineId` | String | **Partition Key** |
-| `timestamp` | Number (epoch ms) | **Sort Key** |
-| `sessionId` | String | — |
-| `current` | Number | Amps |
-| `voltage` | Number | Volts |
-| `gasflow` | Number | L/min |
-| `wirefeed` | Number | m/min |
+This table is **written by AWS IoT Core** (not by the dashboard or API Gateway).
 
-**Access patterns:**
-- Query by `machineId` + `timestamp` range (descending, limit N)
-- Filter by `sessionId` (post-query or GSI)
+| Attribute | Type | Key | Example |
+|-----------|------|-----|---------|
+| `robot` | String | **Partition Key** | `"Robot 1"` |
+| `timestamp` | String (ISO datetime) | **Sort Key** | `"2026-03-24 05:12:28"` |
+| `payload` | Map | — | Full sensor reading (see below) |
+
+**Payload structure** (DynamoDB native format):
+```json
+{
+  "robot": { "S": "Robot 1" },
+  "temperature": { "N": "5.262271" },
+  "current": { "N": "-0.514531" },
+  "vibration": { "N": "0" },
+  "voltage": { "N": "7.93644" },
+  "timestamp": { "S": "2026-03-24 05:11:05" }
+}
+```
+
+**Access pattern:** Query by `robot` (partition key) + `timestamp` descending, limit N.
+
+> **Note:** The `ArcmetricWeldData` table replaced the earlier `WeldData` table. The key difference is `robot` (String) instead of `machineId`, and `timestamp` is an ISO string instead of epoch milliseconds.
 
 ### 4.2 `WeldSessions` — Session Metadata
 
 | Attribute | Type | Key |
 |-----------|------|-----|
 | `id` | String | **Partition Key** |
-| `machineId` | String | — |
+| `sessionId` | String | — (copy of id) |
+| `machineId` | String | — (e.g. `"Robot 1"`) |
 | `operator` | String | — |
-| `wpsRef` | String | Process preset ID (e.g. `gmaw-mild-steel`) |
+| `wpsRef` | String | Process preset ID |
 | `status` | String | `active` / `completed` / `failed` |
 | `startTime` | Number (epoch ms) | — |
-| `endTime` | Number (epoch ms) | — (set when completed/failed) |
-
-**No Sort Key.** Each session has a unique `id` like `WS-2026-1042`.
+| `endTime` | Number (epoch ms) | — (set when completed) |
 
 ### 4.3 `WeldMachines` — Machine Registry
 
 | Attribute | Type | Key |
 |-----------|------|-----|
 | `id` | String | **Partition Key** |
-| `name` | String | Display name (e.g. "Station Alpha") |
+| `name` | String | Display name |
 | `status` | String | `active` / `retired` |
 | `createdAt` | Number (epoch ms) | — |
-
-**No Sort Key.** Machine IDs like `ESP32-WM-001`.
 
 ---
 
