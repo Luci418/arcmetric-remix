@@ -1,6 +1,6 @@
 # ArcMetric — Complete Developer Guide
 
-> **Last updated:** 2026-03-17
+> **Last updated:** 2026-03-24
 >
 > Real-time welding telemetry dashboard that monitors current, voltage, gas flow, and wire feed against WPS (Welding Procedure Specification) limits. Data flows from IoT sensors → AWS cloud → React dashboard.
 
