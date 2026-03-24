@@ -241,23 +241,25 @@ This table is **written by AWS IoT Core** (not by the dashboard or API Gateway).
 
 ## 5. Lambda Functions
 
-### 5.1 `arcmetric-weld-data` — Telemetry Reader
+### 5.1 `arcmetric-query` — Telemetry Reader (for IoT Core table)
 
 **Runtime:** Python 3.12  
 **Trigger:** API Gateway `GET /weld-data`  
-**Environment Variables:** `TABLE_NAME=WeldData`
+**Environment Variables:** `TABLE_NAME=ArcmetricWeldData`
+
+Reads from the IoT Core DynamoDB table, transforms the IoT format (`robot` + string timestamps + nested payload) into the flat JSON the dashboard expects.
 
 **Query parameters:**
-- `machineId` (required) — partition key
-- `limit` (optional, default 3600) — max items
-- `sessionId` (optional) — filter by session
+- `machineId` (required) — maps to `robot` partition key (e.g. `"Robot 1"`)
+- `limit` (optional, default 100) — max items
 
 ```python
 import os, json, boto3
 from decimal import Decimal
+from datetime import datetime
 from boto3.dynamodb.conditions import Key
 
-TABLE_NAME = os.environ.get("TABLE_NAME", "WeldData")
+TABLE_NAME = os.environ.get("TABLE_NAME", "ArcmetricWeldData")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
 
@@ -278,26 +280,49 @@ def lambda_handler(event, context):
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
-    params = event.get("queryStringParameters") or {}
-    machine_id = params.get("machineId", "")
-    limit = int(params.get("limit", "3600"))
-    session_id = params.get("sessionId")
+    qs = event.get("queryStringParameters") or {}
+    machine_id = qs.get("machineId", "Robot 1")
+    limit = int(qs.get("limit", "100"))
 
-    if not machine_id:
-        return {"statusCode": 400, "headers": CORS,
-                "body": json.dumps({"error": "machineId required"})}
-
-    response = table.query(
-        KeyConditionExpression=Key("machineId").eq(machine_id),
+    result = table.query(
+        KeyConditionExpression=Key("robot").eq(machine_id),
         ScanIndexForward=False,
         Limit=limit,
     )
-    items = response.get("Items", [])
 
-    if session_id:
-        items = [i for i in items if i.get("sessionId") == session_id]
+    items = []
+    for item in result.get("Items", []):
+        p = item.get("payload", item)
+        if isinstance(p, str):
+            p = json.loads(p)
 
-    items.reverse()  # chronological order
+        # Convert ISO timestamp → epoch ms
+        ts_str = item.get("timestamp", "")
+        try:
+            dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+            ts_ms = int(dt.timestamp() * 1000)
+        except:
+            ts_ms = 0
+
+        # Handle both nested DynamoDB format {"N":"val"} and flat format
+        def extract(field, default=0):
+            val = p.get(field, default)
+            if isinstance(val, dict):
+                return float(val.get("N", default))
+            return float(val)
+
+        items.append({
+            "machineId": machine_id,
+            "timestamp": ts_ms,
+            "current": extract("current"),
+            "voltage": extract("voltage"),
+            "temperature": extract("temperature"),
+            "vibration": int(extract("vibration")),
+            "gasflow": 0,
+            "wirefeed": 0,
+        })
+
+    items.reverse()  # oldest first for chart plotting
 
     return {
         "statusCode": 200,
