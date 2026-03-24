@@ -28,7 +28,7 @@ const ALL_METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed
 const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const [dataSource, setDataSource] = useState<DataSource>('aws');
   const [activeChart, setActiveChart] = useState<MetricKey>('current');
-  const [selectedMachine, setSelectedMachine] = useState('ESP32-WM-001');
+  const [selectedMachine, setSelectedMachine] = useState('Robot 1');
   const [timeRange, setTimeRange] = useState<TimeRange>('live');
   const [customStart, setCustomStart] = useState<Date | undefined>();
   const [customEnd, setCustomEnd] = useState<Date | undefined>();
