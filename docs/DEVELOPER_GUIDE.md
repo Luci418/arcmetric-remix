@@ -1,6 +1,6 @@
 # ArcMetric — Complete Developer Guide
 
-> **Last updated:** 2026-03-17
+> **Last updated:** 2026-03-24
 >
 > Real-time welding telemetry dashboard that monitors current, voltage, gas flow, and wire feed against WPS (Welding Procedure Specification) limits. Data flows from IoT sensors → AWS cloud → React dashboard.
 
@@ -33,10 +33,12 @@
 │  (Vite + TypeScript + Tailwind + shadcn/ui + Recharts)          │
 │                                                                  │
 │  ┌─────────┐  ┌──────────┐  ┌───────────┐  ┌────────────────┐  │
-│  │MetricCard│  │ LiveChart │  │AlertPanel │  │WeldSessionTable│  │
+│  │MetricCard│  │ LiveChart │  │AlertPanel │  │SessionHistory  │  │
 │  └────┬─────┘  └─────┬────┘  └─────┬─────┘  └───────┬────────┘  │
 │       │              │              │                │            │
-│       └──────────────┴──────────────┴────────────────┘            │
+│  ┌────┴──────────────┴──────────────┴────────────────┘            │
+│  │  VibrationIndicator  │  WeldImageClassifier                   │
+│  └──────────────────────┘                                        │
 │                              │                                    │
 │                    ┌─────────┴──────────┐                        │
 │                    │  useAWSData hook   │  (polls every 3s)      │
@@ -55,7 +57,7 @@
 │                         $default stage                           │
 │                                                                  │
 │   Routes:                                                        │
-│     GET    /weld-data       → Lambda: arcmetric-weld-data        │
+│     GET    /weld-data       → Lambda: arcmetric-query            │
 │     GET    /sessions        → Lambda: arcmetric-sessions         │
 │     POST   /sessions        → Lambda: arcmetric-sessions         │
 │     PATCH  /sessions/{id}   → Lambda: arcmetric-sessions         │
@@ -67,15 +69,30 @@
         │              │              │
         ▼              ▼              ▼
 ┌──────────────┐ ┌───────────┐ ┌────────────┐
-│  WeldData    │ │WeldSessions│ │WeldMachines│   ← DynamoDB Tables
-│  (telemetry) │ │ (sessions) │ │ (machines) │
-└──────────────┘ └───────────┘ └────────────┘
+│ArcmetricWeld │ │WeldSessions│ │WeldMachines│   ← DynamoDB Tables
+│    Data      │ │ (sessions) │ │ (machines) │
+│  (IoT Core)  │ └───────────┘ └────────────┘
+└──────────────┘
         ▲
-        │  Writes telemetry
+        │  IoT Core Rule writes
 ┌───────┴──────────────────────────────────────────────────────────┐
-│               SIMULATOR LAMBDA (EventBridge, 1 min)              │
-│               arcmetric-simulator                                │
-│  Reads active sessions → generates 60 data points per session   │
+│                      AWS IoT CORE                                │
+│                                                                  │
+│  ESP32 → MQTT (esp32/pub) → IoT Rule → DynamoDB                │
+│                                                                  │
+│  Sensors:                                                        │
+│    ACS712 (Current) → GPIO32                                    │
+│    DC Voltage 0-25V → GPIO35                                    │
+│    LM35 (Temperature) → GPIO34                                  │
+│    SW420 (Vibration) → GPIO26                                   │
+│                                                                  │
+│  MQTT Payload:                                                   │
+│  {                                                               │
+│    "robot": "Robot 1",                                          │
+│    "current": -0.66, "voltage": 7.73,                           │
+│    "temperature": 7.63, "vibration": 1,                         │
+│    "timestamp": "2026-03-24 05:12:28"                           │
+│  }                                                               │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -159,82 +176,90 @@ arcmetric/
 | Service | Resource | Purpose |
 |---------|----------|---------|
 | **API Gateway** | `arcmetric-cv-api` (`a39km4t04h`) | HTTP API v2, `$default` stage, routes all dashboard traffic |
-| **Lambda** | `arcmetric-weld-data` | Read telemetry from DynamoDB |
+| **Lambda** | `arcmetric-query` | Read telemetry from IoT Core DynamoDB table |
 | **Lambda** | `arcmetric-sessions` | CRUD for weld sessions |
 | **Lambda** | `arcmetric-machines` | CRUD for machine fleet |
-| **Lambda** | `arcmetric-simulator` | Generates fake telemetry for active sessions |
-| **EventBridge** | `arcmetric-simulator` rule | Triggers simulator Lambda every 1 minute |
-| **DynamoDB** | `WeldData` | Time-series telemetry storage |
+| **IoT Core** | Thing: `arcmetric_final` | MQTT broker for ESP32 sensor data |
+| **IoT Core Rule** | (configured) | Writes MQTT messages to `ArcmetricWeldData` DynamoDB |
+| **DynamoDB** | `ArcmetricWeldData` | Sensor telemetry (written by IoT Core) |
 | **DynamoDB** | `WeldSessions` | Session metadata |
 | **DynamoDB** | `WeldMachines` | Machine registry |
-| **S3** | `arcmetric-cvdata` | Raw seed data (optional) |
 
 ---
 
 ## 4. DynamoDB Tables
 
-### 4.1 `WeldData` — Telemetry
+### 4.1 `ArcmetricWeldData` — Sensor Telemetry (IoT Core)
 
-| Attribute | Type | Key |
-|-----------|------|-----|
-| `machineId` | String | **Partition Key** |
-| `timestamp` | Number (epoch ms) | **Sort Key** |
-| `sessionId` | String | — |
-| `current` | Number | Amps |
-| `voltage` | Number | Volts |
-| `gasflow` | Number | L/min |
-| `wirefeed` | Number | m/min |
+This table is **written by AWS IoT Core** (not by the dashboard or API Gateway).
 
-**Access patterns:**
-- Query by `machineId` + `timestamp` range (descending, limit N)
-- Filter by `sessionId` (post-query or GSI)
+| Attribute | Type | Key | Example |
+|-----------|------|-----|---------|
+| `robot` | String | **Partition Key** | `"Robot 1"` |
+| `timestamp` | String (ISO datetime) | **Sort Key** | `"2026-03-24 05:12:28"` |
+| `payload` | Map | — | Full sensor reading (see below) |
+
+**Payload structure** (DynamoDB native format):
+```json
+{
+  "robot": { "S": "Robot 1" },
+  "temperature": { "N": "5.262271" },
+  "current": { "N": "-0.514531" },
+  "vibration": { "N": "0" },
+  "voltage": { "N": "7.93644" },
+  "timestamp": { "S": "2026-03-24 05:11:05" }
+}
+```
+
+**Access pattern:** Query by `robot` (partition key) + `timestamp` descending, limit N.
+
+> **Note:** The `ArcmetricWeldData` table replaced the earlier `WeldData` table. The key difference is `robot` (String) instead of `machineId`, and `timestamp` is an ISO string instead of epoch milliseconds.
 
 ### 4.2 `WeldSessions` — Session Metadata
 
 | Attribute | Type | Key |
 |-----------|------|-----|
 | `id` | String | **Partition Key** |
-| `machineId` | String | — |
+| `sessionId` | String | — (copy of id) |
+| `machineId` | String | — (e.g. `"Robot 1"`) |
 | `operator` | String | — |
-| `wpsRef` | String | Process preset ID (e.g. `gmaw-mild-steel`) |
+| `wpsRef` | String | Process preset ID |
 | `status` | String | `active` / `completed` / `failed` |
 | `startTime` | Number (epoch ms) | — |
-| `endTime` | Number (epoch ms) | — (set when completed/failed) |
-
-**No Sort Key.** Each session has a unique `id` like `WS-2026-1042`.
+| `endTime` | Number (epoch ms) | — (set when completed) |
 
 ### 4.3 `WeldMachines` — Machine Registry
 
 | Attribute | Type | Key |
 |-----------|------|-----|
 | `id` | String | **Partition Key** |
-| `name` | String | Display name (e.g. "Station Alpha") |
+| `name` | String | Display name |
 | `status` | String | `active` / `retired` |
 | `createdAt` | Number (epoch ms) | — |
-
-**No Sort Key.** Machine IDs like `ESP32-WM-001`.
 
 ---
 
 ## 5. Lambda Functions
 
-### 5.1 `arcmetric-weld-data` — Telemetry Reader
+### 5.1 `arcmetric-query` — Telemetry Reader (for IoT Core table)
 
 **Runtime:** Python 3.12  
 **Trigger:** API Gateway `GET /weld-data`  
-**Environment Variables:** `TABLE_NAME=WeldData`
+**Environment Variables:** `TABLE_NAME=ArcmetricWeldData`
+
+Reads from the IoT Core DynamoDB table, transforms the IoT format (`robot` + string timestamps + nested payload) into the flat JSON the dashboard expects.
 
 **Query parameters:**
-- `machineId` (required) — partition key
-- `limit` (optional, default 3600) — max items
-- `sessionId` (optional) — filter by session
+- `machineId` (required) — maps to `robot` partition key (e.g. `"Robot 1"`)
+- `limit` (optional, default 100) — max items
 
 ```python
 import os, json, boto3
 from decimal import Decimal
+from datetime import datetime
 from boto3.dynamodb.conditions import Key
 
-TABLE_NAME = os.environ.get("TABLE_NAME", "WeldData")
+TABLE_NAME = os.environ.get("TABLE_NAME", "ArcmetricWeldData")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
 
@@ -255,26 +280,49 @@ def lambda_handler(event, context):
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
-    params = event.get("queryStringParameters") or {}
-    machine_id = params.get("machineId", "")
-    limit = int(params.get("limit", "3600"))
-    session_id = params.get("sessionId")
+    qs = event.get("queryStringParameters") or {}
+    machine_id = qs.get("machineId", "Robot 1")
+    limit = int(qs.get("limit", "100"))
 
-    if not machine_id:
-        return {"statusCode": 400, "headers": CORS,
-                "body": json.dumps({"error": "machineId required"})}
-
-    response = table.query(
-        KeyConditionExpression=Key("machineId").eq(machine_id),
+    result = table.query(
+        KeyConditionExpression=Key("robot").eq(machine_id),
         ScanIndexForward=False,
         Limit=limit,
     )
-    items = response.get("Items", [])
 
-    if session_id:
-        items = [i for i in items if i.get("sessionId") == session_id]
+    items = []
+    for item in result.get("Items", []):
+        p = item.get("payload", item)
+        if isinstance(p, str):
+            p = json.loads(p)
 
-    items.reverse()  # chronological order
+        # Convert ISO timestamp → epoch ms
+        ts_str = item.get("timestamp", "")
+        try:
+            dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+            ts_ms = int(dt.timestamp() * 1000)
+        except:
+            ts_ms = 0
+
+        # Handle both nested DynamoDB format {"N":"val"} and flat format
+        def extract(field, default=0):
+            val = p.get(field, default)
+            if isinstance(val, dict):
+                return float(val.get("N", default))
+            return float(val)
+
+        items.append({
+            "machineId": machine_id,
+            "timestamp": ts_ms,
+            "current": extract("current"),
+            "voltage": extract("voltage"),
+            "temperature": extract("temperature"),
+            "vibration": int(extract("vibration")),
+            "gasflow": 0,
+            "wirefeed": 0,
+        })
+
+    items.reverse()  # oldest first for chart plotting
 
     return {
         "statusCode": 200,

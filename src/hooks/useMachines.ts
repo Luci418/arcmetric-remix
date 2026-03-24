@@ -4,11 +4,7 @@ import { Machine } from '@/lib/weldTypes';
 const STORAGE_KEY = 'arcmetric-machines';
 
 const DEFAULT_MACHINES: Machine[] = [
-  { id: 'ESP32-WM-001', name: 'Bay 1 – MIG Station', status: 'active', addedAt: new Date('2025-11-01') },
-  { id: 'ESP32-WM-002', name: 'Bay 2 – TIG Station', status: 'active', addedAt: new Date('2025-11-01') },
-  { id: 'ESP32-WM-003', name: 'Bay 3 – MIG Station', status: 'active', addedAt: new Date('2025-11-15') },
-  { id: 'ESP32-WM-004', name: 'Bay 4 – Stick Welder', status: 'active', addedAt: new Date('2025-12-01') },
-  { id: 'ESP32-WM-005', name: 'Bay 5 – MIG Station', status: 'active', addedAt: new Date('2026-01-10') },
+  { id: 'Robot 1', name: 'Robot 1 – Welding Station', status: 'active', addedAt: new Date('2025-11-01') },
 ];
 
 function loadMachines(): Machine[] {
