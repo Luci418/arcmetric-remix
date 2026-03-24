@@ -258,18 +258,10 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
       };
     }
 
-    if (!activeSession) {
-      setHistory([]);
-      setConnected(true);
-      setError('No active session for selected machine');
-      return () => {
-        active = false;
-      };
-    }
-
     const fetchData = async () => {
       try {
-        const items = await fetchWeldData(machineId, HISTORY_LENGTH, activeSession.id);
+        // IoT Core data doesn't have sessionId — fetch by machine only
+        const items = await fetchWeldData(machineId, HISTORY_LENGTH);
         if (!active) return;
 
         const points: WeldDataPoint[] = Array.isArray(items)
@@ -293,7 +285,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
           setError(null);
         } else {
           setConnected(true);
-          setError('No telemetry in active session yet');
+          setError('No telemetry data available yet');
         }
       } catch (err) {
         if (!active) return;
@@ -309,7 +301,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
       active = false;
       clearInterval(interval);
     };
-  }, [machineId, activeSession, checkAlerts]);
+  }, [machineId, checkAlerts]);
 
   const acknowledgeAlert = useCallback((id: string) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)));
