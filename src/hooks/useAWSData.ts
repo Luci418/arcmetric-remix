@@ -303,7 +303,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
         setHistory(points.slice(-HISTORY_LENGTH));
 
         if (points.length > 0) {
-          checkAlerts(points[points.length - 1]);
+          checkAlerts(points[points.length - 1], machineId);
           setConnected(true);
           setError(null);
         } else {
