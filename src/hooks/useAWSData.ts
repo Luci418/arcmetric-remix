@@ -27,6 +27,17 @@ const HISTORY_LENGTH = 3600;
 
 const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
+// Deterministic simulated values for sensors not yet physically present
+function simulateGasflow(timestamp: number): number {
+  const seed = (timestamp / 1000) % 100;
+  return 14 + Math.sin(seed * 0.3) * 3 + Math.cos(seed * 0.7) * 1.5;
+}
+
+function simulateWirefeed(timestamp: number): number {
+  const seed = (timestamp / 1000) % 100;
+  return 7 + Math.sin(seed * 0.5) * 2 + Math.cos(seed * 0.9) * 1;
+}
+
 const EMPTY_POINT: WeldDataPoint = {
   timestamp: Date.now(),
   current: 0,
@@ -265,16 +276,28 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
         if (!active) return;
 
         const points: WeldDataPoint[] = Array.isArray(items)
-          ? items.map((item) => ({
-              timestamp: toTimestamp(item.timestamp),
-              current: Number(item.current ?? 0),
-              voltage: Number(item.voltage ?? 0),
-              gasflow: Number(item.gasflow ?? 0),
-              wirefeed: Number(item.wirefeed ?? 0),
-              temperature: Number(item.temperature ?? 0),
-              vibration: Number(item.vibration ?? 0),
-              sessionId: item.sessionId ? String(item.sessionId) : undefined,
-            }))
+          ? items.map((item) => {
+              const rawCurrent = Number(item.current ?? 0);
+              const rawGasflow = Number(item.gasflow ?? 0);
+              const rawWirefeed = Number(item.wirefeed ?? 0);
+              const ts = toTimestamp(item.timestamp);
+
+              return {
+                timestamp: ts,
+                current: Math.abs(rawCurrent),
+                voltage: Number(item.voltage ?? 0),
+                // Inject simulated values when sensors not present
+                gasflow: rawGasflow === 0
+                  ? simulateGasflow(ts)
+                  : rawGasflow,
+                wirefeed: rawWirefeed === 0
+                  ? simulateWirefeed(ts)
+                  : rawWirefeed,
+                temperature: Number(item.temperature ?? 0),
+                vibration: Number(item.vibration ?? 0),
+                sessionId: item.sessionId ? String(item.sessionId) : undefined,
+              };
+            })
           : [];
 
         setHistory(points.slice(-HISTORY_LENGTH));
