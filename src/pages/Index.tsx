@@ -127,10 +127,19 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
 
   const handleEndSession = useCallback(
     async (sessionId: string) => {
-      const result = await updateSessionStatus(sessionId, 'completed');
+      const enriched = sessions.find((s) => s.id === sessionId);
+      const metrics = enriched
+        ? {
+            avgCurrent: enriched.avgCurrent,
+            avgVoltage: enriched.avgVoltage,
+            avgGasflow: enriched.avgGasflow,
+            qualityScore: enriched.qualityScore,
+          }
+        : undefined;
+      const result = await updateSessionStatus(sessionId, 'completed', metrics);
       return result;
     },
-    [updateSessionStatus]
+    [updateSessionStatus, sessions]
   );
 
   const filteredHistory = useMemo(() => {
