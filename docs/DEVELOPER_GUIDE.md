@@ -311,6 +311,17 @@ def lambda_handler(event, context):
                 return float(val.get("N", default))
             return float(val)
 
+        ts_ms_val = ts_ms  # for deterministic simulation
+
+        # Simulate gasflow & wirefeed for sensors not yet present
+        import math
+        seed = (ts_ms_val / 1000) % 100
+        sim_gasflow = 14 + math.sin(seed * 0.3) * 3 + math.cos(seed * 0.7) * 1.5
+        sim_wirefeed = 7 + math.sin(seed * 0.5) * 2 + math.cos(seed * 0.9) * 1
+
+        raw_gasflow = extract("gasflow")
+        raw_wirefeed = extract("wirefeed")
+
         items.append({
             "machineId": machine_id,
             "timestamp": ts_ms,
@@ -318,8 +329,8 @@ def lambda_handler(event, context):
             "voltage": extract("voltage"),
             "temperature": extract("temperature"),
             "vibration": int(extract("vibration")),
-            "gasflow": 0,
-            "wirefeed": 0,
+            "gasflow": raw_gasflow if raw_gasflow != 0 else round(sim_gasflow, 2),
+            "wirefeed": raw_wirefeed if raw_wirefeed != 0 else round(sim_wirefeed, 2),
         })
 
     items.reverse()  # oldest first for chart plotting
