@@ -33,7 +33,7 @@ interface CreateSessionDialogProps {
 export function CreateSessionDialog({ machines, sessions, onCreateSession, defaultMachineId }: CreateSessionDialogProps) {
   const [open, setOpen] = useState(false);
   const [operator, setOperator] = useState('');
-  const [machineId, setMachineId] = useState('');
+  const [machineId, setMachineId] = useState(defaultMachineId ?? '');
   const [wpsRef, setWpsRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
