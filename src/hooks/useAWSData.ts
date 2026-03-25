@@ -345,10 +345,23 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
     }
   }, []);
 
-  const updateSessionStatus = useCallback(async (sessionId: string, status: WeldSessionStatus) => {
+  const updateSessionStatus = useCallback(async (
+    sessionId: string,
+    status: WeldSessionStatus,
+    metrics?: { avgCurrent: number; avgVoltage: number; avgGasflow: number; qualityScore: number }
+  ) => {
     try {
       const endTime = status === 'active' ? undefined : Date.now();
-      const payload = { status, ...(endTime ? { endTime } : {}) };
+      const payload: Record<string, any> = {
+        status,
+        ...(endTime ? { endTime } : {}),
+        ...(metrics ? {
+          avgCurrent: metrics.avgCurrent,
+          avgVoltage: metrics.avgVoltage,
+          avgGasflow: metrics.avgGasflow,
+          qualityScore: metrics.qualityScore,
+        } : {}),
+      };
 
       const updated = await updateSessionApi(sessionId, payload);
 
@@ -360,6 +373,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
             ...session,
             status,
             endTime: endTime ? new Date(endTime) : undefined,
+            ...(metrics ?? {}),
           };
         })
       );

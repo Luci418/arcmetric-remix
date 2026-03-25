@@ -245,7 +245,7 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
             </div>
           </div>
 
-          <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
+          <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} onMachineSwitch={setSelectedMachine} />
         </div>
 
         {/* Active Session — below chart */}
