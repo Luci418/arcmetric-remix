@@ -257,6 +257,27 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
           <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} onMachineSwitch={setSelectedMachine} />
         </div>
 
+        {/* Data streaming without session banner */}
+        {dataWithoutSession && (
+          <div className="flex items-center justify-between rounded-xl border border-status-warning/30 bg-status-warning/5 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-warning/15">
+                <AlertTriangle className="h-4 w-4 text-status-warning" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Data streaming without session</p>
+                <p className="text-xs text-muted-foreground">Sensor data detected on {selectedMachine}. Start a session to track quality metrics.</p>
+              </div>
+            </div>
+            <CreateSessionDialog
+              machines={machines}
+              sessions={awsSessions}
+              onCreateSession={handleCreateSession}
+              defaultMachineId={selectedMachine}
+            />
+          </div>
+        )}
+
         {/* Active Session — below chart */}
         <ActiveSessionCard
           session={enrichedActiveSession}
