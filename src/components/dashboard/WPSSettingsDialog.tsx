@@ -15,7 +15,7 @@ interface WPSSettingsDialogProps {
   onApply: (specs: WPSSpecSet, presetId: string) => void;
 }
 
-const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed'];
+const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
 export function WPSSettingsDialog({ activeSpecs, activePresetId, onApply }: WPSSettingsDialogProps) {
   const [open, setOpen] = useState(false);
