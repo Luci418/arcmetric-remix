@@ -176,7 +176,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
   );
 
   const checkAlerts = useCallback(
-    (point: WeldDataPoint) => {
+    (point: WeldDataPoint, forMachineId: string) => {
       const newAlerts: WeldAlert[] = [];
 
       METRIC_KEYS.forEach((key) => {
@@ -196,8 +196,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
         }
 
         if (previousStatus !== status) {
-          const midpoint = (spec.wpsMin + spec.wpsMax) / 2;
-          const isAbove = value >= midpoint;
+          const isAbove = value > spec.wpsMax;
           alertIdCounter.current += 1;
           newAlerts.push({
             id: `aws-alert-${alertIdCounter.current}`,
@@ -210,6 +209,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
             value,
             threshold: isAbove ? spec.wpsMax : spec.wpsMin,
             acknowledged: false,
+            machineId: forMachineId,
           });
         }
 
