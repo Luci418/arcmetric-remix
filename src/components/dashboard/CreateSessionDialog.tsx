@@ -27,9 +27,10 @@ interface CreateSessionDialogProps {
   machines: Machine[];
   sessions: WeldSession[];
   onCreateSession: (session: WeldSession) => Promise<boolean> | boolean | void;
+  defaultMachineId?: string;
 }
 
-export function CreateSessionDialog({ machines, sessions, onCreateSession }: CreateSessionDialogProps) {
+export function CreateSessionDialog({ machines, sessions, onCreateSession, defaultMachineId }: CreateSessionDialogProps) {
   const [open, setOpen] = useState(false);
   const [operator, setOperator] = useState('');
   const [machineId, setMachineId] = useState('');

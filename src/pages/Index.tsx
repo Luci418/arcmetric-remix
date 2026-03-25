@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useAWSData } from '@/hooks/useAWSData';
 import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
@@ -7,6 +8,7 @@ import { VibrationIndicator } from '@/components/dashboard/VibrationIndicator';
 import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
 import { ActiveSessionCard } from '@/components/dashboard/ActiveSessionCard';
+import { CreateSessionDialog } from '@/components/dashboard/CreateSessionDialog';
 import { SessionHistoryTable } from '@/components/dashboard/SessionHistoryTable';
 import { WPSInfoBar } from '@/components/dashboard/WPSInfoBar';
 import { TimeRangeSelector } from '@/components/dashboard/TimeRangeSelector';
