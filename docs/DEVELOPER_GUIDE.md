@@ -406,7 +406,7 @@ def lambda_handler(event, context):
             "body": json.dumps(item, cls=DecimalEncoder),
         }
 
-    # PATCH /sessions/{id} — update status
+    # PATCH /sessions/{id} — update status + final metrics
     if method == "PATCH" and "/sessions/" in path:
         session_id = path.split("/sessions/")[1]
         body = json.loads(event.get("body", "{}"))
@@ -424,17 +424,26 @@ def lambda_handler(event, context):
             update_parts.append("endTime = :e")
             values[":e"] = body["endTime"]
 
+        # Accept final metric values when ending a session
+        for field in ["avgCurrent", "avgVoltage", "avgGasflow", "qualityScore"]:
+            if field in body:
+                update_parts.append(f"{field} = :{field[0:4]}")
+                values[f":{field[0:4]}"] = Decimal(str(body[field]))
+
         if not update_parts:
             return {"statusCode": 400, "headers": CORS,
                     "body": json.dumps({"error": "Nothing to update"})}
 
-        result = table.update_item(
-            Key={"id": session_id},
-            UpdateExpression="SET " + ", ".join(update_parts),
-            ExpressionAttributeValues=values,
-            ExpressionAttributeNames=names if names else None,
-            ReturnValues="ALL_NEW",
-        )
+        kwargs = {
+            "Key": {"id": session_id},
+            "UpdateExpression": "SET " + ", ".join(update_parts),
+            "ExpressionAttributeValues": values,
+            "ReturnValues": "ALL_NEW",
+        }
+        if names:
+            kwargs["ExpressionAttributeNames"] = names
+
+        result = table.update_item(**kwargs)
         return {
             "statusCode": 200,
             "headers": {**CORS, "Content-Type": "application/json"},
