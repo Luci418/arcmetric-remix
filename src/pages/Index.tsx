@@ -71,6 +71,15 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const source = dataSource === 'aws' ? aws : simulated;
   const { latestPoint, history, alerts, acknowledgeAlert } = source;
 
+  // Detect if data is streaming without an active session
+  const isDataStreaming = useMemo(() => {
+    if (history.length === 0) return false;
+    const latestTs = history[history.length - 1].timestamp;
+    return Date.now() - latestTs < 30000; // data within last 30s
+  }, [history]);
+
+  const dataWithoutSession = isDataStreaming && !activeSessionForMachine && dataSource === 'aws';
+
   const referenceTimestamp = history.length > 0 ? history[history.length - 1].timestamp : Date.now();
 
   const sessions = useMemo(() => {
