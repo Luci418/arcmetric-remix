@@ -29,6 +29,7 @@ export interface WeldAlert {
   value: number;
   threshold: number;
   acknowledged: boolean;
+  machineId?: string;
 }
 
 export type WeldSessionStatus = 'active' | 'completed' | 'failed';

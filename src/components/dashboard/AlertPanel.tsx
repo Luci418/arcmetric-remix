@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, XCircle, BellOff, ArrowUp, ArrowDown } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, XCircle, BellOff, ArrowUp, ArrowDown, Cpu } from 'lucide-react';
 import { WeldAlert } from '@/lib/weldTypes';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface AlertPanelProps {
   alerts: WeldAlert[];
   onAcknowledge: (id: string) => void;
+  onMachineSwitch?: (machineId: string) => void;
 }
 
 function timeAgo(date: Date): string {
@@ -22,7 +23,7 @@ function isAboveLimit(alert: WeldAlert): boolean {
   return alert.value > alert.threshold;
 }
 
-export function AlertPanel({ alerts, onAcknowledge }: AlertPanelProps) {
+export function AlertPanel({ alerts, onAcknowledge, onMachineSwitch }: AlertPanelProps) {
   const active = alerts.filter((a) => !a.acknowledged);
   const dismissed = alerts.filter((a) => a.acknowledged);
 
@@ -59,7 +60,18 @@ export function AlertPanel({ alerts, onAcknowledge }: AlertPanelProps) {
         ) : (
           <div className="divide-y divide-border">
             {active.map((alert) => (
-              <div key={alert.id} className="flex items-start gap-3 px-5 py-3 bg-muted/40">
+              <div
+                key={alert.id}
+                className={cn(
+                  'flex items-start gap-3 px-5 py-3 bg-muted/40',
+                  alert.machineId && onMachineSwitch && 'cursor-pointer hover:bg-muted/60'
+                )}
+                onClick={() => {
+                  if (alert.machineId && onMachineSwitch) {
+                    onMachineSwitch(alert.machineId);
+                  }
+                }}
+              >
                 <div className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
                   alert.severity === 'critical' ? 'bg-status-critical/15' : 'bg-status-warning/15'
                 )}>
@@ -81,12 +93,21 @@ export function AlertPanel({ alerts, onAcknowledge }: AlertPanelProps) {
                   <p className="text-[11px] text-muted-foreground">
                     {alert.value.toFixed(1)} — limit {alert.threshold} · {timeAgo(alert.timestamp)}
                   </p>
+                  {alert.machineId && (
+                    <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                      <Cpu className="h-2.5 w-2.5" />
+                      {alert.machineId}
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 shrink-0 px-2 text-[11px]"
-                  onClick={() => onAcknowledge(alert.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAcknowledge(alert.id);
+                  }}
                 >
                   Dismiss
                 </Button>
@@ -105,7 +126,9 @@ export function AlertPanel({ alerts, onAcknowledge }: AlertPanelProps) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] text-muted-foreground">{alert.metric} — {alert.value.toFixed(1)}</p>
-                      <p className="text-[10px] text-muted-foreground/60">{timeAgo(alert.timestamp)}</p>
+                      <p className="text-[10px] text-muted-foreground/60">
+                        {alert.machineId && `${alert.machineId} · `}{timeAgo(alert.timestamp)}
+                      </p>
                     </div>
                   </div>
                 ))}

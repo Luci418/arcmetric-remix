@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useAWSData } from '@/hooks/useAWSData';
 import { DashboardHeader, DataSource } from '@/components/dashboard/DashboardHeader';
@@ -7,6 +8,7 @@ import { VibrationIndicator } from '@/components/dashboard/VibrationIndicator';
 import { LiveChart } from '@/components/dashboard/LiveChart';
 import { AlertPanel } from '@/components/dashboard/AlertPanel';
 import { ActiveSessionCard } from '@/components/dashboard/ActiveSessionCard';
+import { CreateSessionDialog } from '@/components/dashboard/CreateSessionDialog';
 import { SessionHistoryTable } from '@/components/dashboard/SessionHistoryTable';
 import { WPSInfoBar } from '@/components/dashboard/WPSInfoBar';
 import { TimeRangeSelector } from '@/components/dashboard/TimeRangeSelector';
@@ -71,6 +73,15 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
   const source = dataSource === 'aws' ? aws : simulated;
   const { latestPoint, history, alerts, acknowledgeAlert } = source;
 
+  // Detect if data is streaming without an active session
+  const isDataStreaming = useMemo(() => {
+    if (history.length === 0) return false;
+    const latestTs = history[history.length - 1].timestamp;
+    return Date.now() - latestTs < 30000; // data within last 30s
+  }, [history]);
+
+  const dataWithoutSession = isDataStreaming && !activeSessionForMachine && dataSource === 'aws';
+
   const referenceTimestamp = history.length > 0 ? history[history.length - 1].timestamp : Date.now();
 
   const sessions = useMemo(() => {
@@ -127,10 +138,19 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
 
   const handleEndSession = useCallback(
     async (sessionId: string) => {
-      const result = await updateSessionStatus(sessionId, 'completed');
+      const enriched = sessions.find((s) => s.id === sessionId);
+      const metrics = enriched
+        ? {
+            avgCurrent: enriched.avgCurrent,
+            avgVoltage: enriched.avgVoltage,
+            avgGasflow: enriched.avgGasflow,
+            qualityScore: enriched.qualityScore,
+          }
+        : undefined;
+      const result = await updateSessionStatus(sessionId, 'completed', metrics);
       return result;
     },
-    [updateSessionStatus]
+    [updateSessionStatus, sessions]
   );
 
   const filteredHistory = useMemo(() => {
@@ -236,8 +256,29 @@ const Index = ({ onLogout }: { onLogout?: () => void }) => {
             </div>
           </div>
 
-          <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
+          <AlertPanel alerts={alerts} onAcknowledge={acknowledgeAlert} onMachineSwitch={setSelectedMachine} />
         </div>
+
+        {/* Data streaming without session banner */}
+        {dataWithoutSession && (
+          <div className="flex items-center justify-between rounded-xl border border-status-warning/30 bg-status-warning/5 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-status-warning/15">
+                <AlertTriangle className="h-4 w-4 text-status-warning" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Data streaming without session</p>
+                <p className="text-xs text-muted-foreground">Sensor data detected on {selectedMachine}. Start a session to track quality metrics.</p>
+              </div>
+            </div>
+            <CreateSessionDialog
+              machines={machines}
+              sessions={awsSessions}
+              onCreateSession={handleCreateSession}
+              defaultMachineId={selectedMachine}
+            />
+          </div>
+        )}
 
         {/* Active Session — below chart */}
         <ActiveSessionCard

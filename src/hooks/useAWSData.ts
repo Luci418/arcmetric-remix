@@ -176,7 +176,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
   );
 
   const checkAlerts = useCallback(
-    (point: WeldDataPoint) => {
+    (point: WeldDataPoint, forMachineId: string) => {
       const newAlerts: WeldAlert[] = [];
 
       METRIC_KEYS.forEach((key) => {
@@ -196,8 +196,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
         }
 
         if (previousStatus !== status) {
-          const midpoint = (spec.wpsMin + spec.wpsMax) / 2;
-          const isAbove = value >= midpoint;
+          const isAbove = value > spec.wpsMax;
           alertIdCounter.current += 1;
           newAlerts.push({
             id: `aws-alert-${alertIdCounter.current}`,
@@ -210,6 +209,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
             value,
             threshold: isAbove ? spec.wpsMax : spec.wpsMin,
             acknowledged: false,
+            machineId: forMachineId,
           });
         }
 
@@ -303,7 +303,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
         setHistory(points.slice(-HISTORY_LENGTH));
 
         if (points.length > 0) {
-          checkAlerts(points[points.length - 1]);
+          checkAlerts(points[points.length - 1], machineId);
           setConnected(true);
           setError(null);
         } else {
@@ -345,10 +345,23 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
     }
   }, []);
 
-  const updateSessionStatus = useCallback(async (sessionId: string, status: WeldSessionStatus) => {
+  const updateSessionStatus = useCallback(async (
+    sessionId: string,
+    status: WeldSessionStatus,
+    metrics?: { avgCurrent: number; avgVoltage: number; avgGasflow: number; qualityScore: number }
+  ) => {
     try {
       const endTime = status === 'active' ? undefined : Date.now();
-      const payload = { status, ...(endTime ? { endTime } : {}) };
+      const payload: Record<string, any> = {
+        status,
+        ...(endTime ? { endTime } : {}),
+        ...(metrics ? {
+          avgCurrent: metrics.avgCurrent,
+          avgVoltage: metrics.avgVoltage,
+          avgGasflow: metrics.avgGasflow,
+          qualityScore: metrics.qualityScore,
+        } : {}),
+      };
 
       const updated = await updateSessionApi(sessionId, payload);
 
@@ -360,6 +373,7 @@ export function useAWSData(machineId: string, specs: WPSSpecSet) {
             ...session,
             status,
             endTime: endTime ? new Date(endTime) : undefined,
+            ...(metrics ?? {}),
           };
         })
       );
