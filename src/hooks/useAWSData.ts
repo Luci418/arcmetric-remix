@@ -27,6 +27,17 @@ const HISTORY_LENGTH = 3600;
 
 const METRIC_KEYS: MetricKey[] = ['current', 'voltage', 'gasflow', 'wirefeed', 'temperature'];
 
+// Deterministic simulated values for sensors not yet physically present
+function simulateGasflow(timestamp: number): number {
+  const seed = (timestamp / 1000) % 100;
+  return 14 + Math.sin(seed * 0.3) * 3 + Math.cos(seed * 0.7) * 1.5;
+}
+
+function simulateWirefeed(timestamp: number): number {
+  const seed = (timestamp / 1000) % 100;
+  return 7 + Math.sin(seed * 0.5) * 2 + Math.cos(seed * 0.9) * 1;
+}
+
 const EMPTY_POINT: WeldDataPoint = {
   timestamp: Date.now(),
   current: 0,
